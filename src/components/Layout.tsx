@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import cobroLogo from '@/assets/cobro-logo.png';
+
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -121,7 +121,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Header con menú desplegable */}
       <div className={`flex items-center justify-between p-3 border-b border-border bg-card ${!isOnline ? 'mt-6' : ''}`}>
         <div className="flex items-center gap-3">
-          <img src={cobroLogo} alt="Cobro" className="h-10 w-auto" />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-3 h-10">

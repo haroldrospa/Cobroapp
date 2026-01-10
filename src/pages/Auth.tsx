@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2, Building2, Mail, Lock, User } from 'lucide-react';
 import { z } from 'zod';
-import cobroLogo from '@/assets/cobro-logo.png';
+
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -194,17 +194,7 @@ const Auth = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <motion.div
-            className="inline-flex items-center justify-center mb-4"
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 400 }}
-          >
-            <img
-              src={cobroLogo}
-              alt="Cobro"
-              className="h-32 w-auto mx-auto"
-            />
-          </motion.div>
+
           <motion.p
             className="text-gray-400 text-sm"
             initial={{ opacity: 0 }}
