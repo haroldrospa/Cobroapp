@@ -180,7 +180,8 @@ const Settings = () => {
     language: 'es',
     timezone: 'America/Santo_Domingo',
     backupFrequency: 'daily',
-    retentionDays: '30'
+    retentionDays: '30',
+    posLayoutGridCols: '2'
   });
 
   // Sync system settings from database
@@ -196,6 +197,7 @@ const Settings = () => {
         timezone: storeSettings.timezone || 'America/Santo_Domingo',
         backupFrequency: storeSettings.backup_frequency || 'daily',
         retentionDays: storeSettings.log_retention_days != null ? String(storeSettings.log_retention_days) : '30',
+        posLayoutGridCols: storeSettings.pos_layout_grid_cols != null ? String(storeSettings.pos_layout_grid_cols) : '2',
       });
 
       // Sync global theme with DB setting - REMOVED to prevent overriding local session
@@ -355,6 +357,7 @@ const Settings = () => {
           timezone: systemSettings.timezone,
           backup_frequency: systemSettings.backupFrequency,
           log_retention_days: parseInt(systemSettings.retentionDays) || 30,
+          pos_layout_grid_cols: parseInt(systemSettings.posLayoutGridCols) || 2,
         });
       } else if (section === 'impresion') {
         // Save print settings to database
@@ -2636,6 +2639,29 @@ const Settings = () => {
                       <SelectItem value="auto">Automático</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Columnas de Productos (Tablet/Móvil)</Label>
+                  <Select
+                    value={systemSettings.posLayoutGridCols}
+                    onValueChange={(value) => setSystemSettings({ ...systemSettings, posLayoutGridCols: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 Columna (Lista)</SelectItem>
+                      <SelectItem value="2">2 Columnas (Estándar)</SelectItem>
+                      <SelectItem value="3">3 Columnas (Tablet)</SelectItem>
+                      <SelectItem value="4">4 Columnas (Tablet Grande)</SelectItem>
+                      <SelectItem value="5">5 Columnas</SelectItem>
+                      <SelectItem value="6">6 Columnas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Ajusta el tamaño de la cuadrícula de productos en dispositivos móviles y tablets.
+                  </p>
                 </div>
               </CardContent>
             </Card>

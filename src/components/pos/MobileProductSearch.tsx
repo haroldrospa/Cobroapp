@@ -16,6 +16,7 @@ interface MobileProductSearchProps {
   onSearchChange: (value: string) => void;
   menuButton?: React.ReactNode;
   actionButton?: React.ReactNode;
+  gridCols?: number;
 }
 
 type SearchType = 'all' | 'name' | 'barcode' | 'id' | 'category';
@@ -27,8 +28,18 @@ const MobileProductSearch: React.FC<MobileProductSearchProps> = ({
   onSearchChange,
   menuButton,
   actionButton,
+  gridCols = 2,
 }) => {
   const [searchType, setSearchType] = useState<SearchType>('all');
+
+  const gridColsClass = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+    5: 'grid-cols-5',
+    6: 'grid-cols-6'
+  }[gridCols] || 'grid-cols-2';
 
   const searchTypes = [
     { type: 'all' as const, label: 'Todo', icon: Asterisk },
@@ -40,7 +51,7 @@ const MobileProductSearch: React.FC<MobileProductSearchProps> = ({
 
   const getFilteredProducts = () => {
     if (!searchTerm.trim()) return products.slice(0, 20); // Show first 20 products by default
-    
+
     const searchLower = searchTerm.toLowerCase().trim();
     return products.filter(product => {
       switch (searchType) {
@@ -130,10 +141,10 @@ const MobileProductSearch: React.FC<MobileProductSearchProps> = ({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2 pb-4">
+          <div className={`grid ${gridColsClass} gap-2 pb-4`}>
             {filteredProducts.map((product) => (
-              <Card 
-                key={product.id} 
+              <Card
+                key={product.id}
                 className={cn(
                   "cursor-pointer transition-all active:scale-95",
                   product.stock <= 0 && "opacity-50"
@@ -145,8 +156,8 @@ const MobileProductSearch: React.FC<MobileProductSearchProps> = ({
                     {/* Product image or placeholder */}
                     <div className="aspect-square bg-muted rounded-md flex items-center justify-center overflow-hidden">
                       {product.image_url ? (
-                        <img 
-                          src={product.image_url} 
+                        <img
+                          src={product.image_url}
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />
@@ -154,7 +165,7 @@ const MobileProductSearch: React.FC<MobileProductSearchProps> = ({
                         <Package className="h-8 w-8 text-muted-foreground/50" />
                       )}
                     </div>
-                    
+
                     {/* Product info */}
                     <div className="space-y-1">
                       <h4 className="font-medium text-sm line-clamp-2 leading-tight">
@@ -164,8 +175,8 @@ const MobileProductSearch: React.FC<MobileProductSearchProps> = ({
                         <span className="font-bold text-base">
                           ${product.price.toFixed(2)}
                         </span>
-                        <Badge 
-                          variant={product.stock > 0 ? "secondary" : "destructive"} 
+                        <Badge
+                          variant={product.stock > 0 ? "secondary" : "destructive"}
                           className="text-xs"
                         >
                           {product.stock}

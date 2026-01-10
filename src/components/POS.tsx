@@ -648,6 +648,7 @@ const POS: React.FC = () => {
               onSearchChange={setSearchTerm}
               menuButton={menuButton}
               actionButton={actionButtons}
+              gridCols={storeSettings?.pos_layout_grid_cols || 2}
             />
           }
           cart={cart}

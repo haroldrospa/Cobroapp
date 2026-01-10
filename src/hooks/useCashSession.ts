@@ -39,6 +39,8 @@ export const useActiveSession = () => {
                 .select('*')
                 .eq('store_id', profile.store_id)
                 .eq('status', 'open')
+                .order('created_at', { ascending: false })
+                .limit(1)
                 .maybeSingle();
 
             if (error) throw error;

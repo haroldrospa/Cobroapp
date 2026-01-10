@@ -1023,6 +1023,7 @@ export type Database = {
           paper_size: string | null
           payment_methods: Json | null
           payment_terms: number | null
+          pos_layout_grid_cols: number | null
           show_tax: boolean | null
           store_id: string | null
           theme: string | null
@@ -1056,6 +1057,7 @@ export type Database = {
           paper_size?: string | null
           payment_methods?: Json | null
           payment_terms?: number | null
+          pos_layout_grid_cols?: number | null
           show_tax?: boolean | null
           store_id?: string | null
           theme?: string | null
@@ -1089,6 +1091,7 @@ export type Database = {
           paper_size?: string | null
           payment_methods?: Json | null
           payment_terms?: number | null
+          pos_layout_grid_cols?: number | null
           show_tax?: boolean | null
           store_id?: string | null
           theme?: string | null

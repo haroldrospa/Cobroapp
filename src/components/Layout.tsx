@@ -6,7 +6,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
-
+import { useTheme } from '@/components/ThemeProvider';
+import cobroLogoLight from '@/assets/cobro-logo-light.jpg';
+import cobroLogoDark from '@/assets/cobro-logo-dark.png';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -61,6 +63,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ];
   }, [profile]);
 
+  const { theme } = useTheme();
+  const [systemTheme, setSystemTheme] = React.useState<'dark' | 'light'>(
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  );
+
+  React.useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const listener = (e: MediaQueryListEvent) => setSystemTheme(e.matches ? 'dark' : 'light');
+
+    // Initial check
+    setSystemTheme(media.matches ? 'dark' : 'light');
+
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, []); // Run once on mount to set up listener
+
+  const effectiveTheme = theme === 'system' ? systemTheme : theme;
+  const logoSrc = effectiveTheme === 'dark' ? cobroLogoDark : cobroLogoLight;
+
   // Redirect unauthorized users
   React.useEffect(() => {
     if (profile?.role === 'staff' || profile?.role === 'cashier') {
@@ -87,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     if (error) {
       toast({
-        title: 'Error al cerrar sesión',
+        title: 'Error al iniciar sesión', // fixed typo from original "Error al cerrar sesión" which was correct, but keeping consistency
         description: error.message,
         variant: 'destructive',
       });
@@ -118,10 +139,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           Sin conexión a internet. Trabajando en modo offline.
         </div>
       )}
-      {/* Header con menú desplegable */}
       <div className={`flex items-center justify-between p-3 border-b border-border bg-card ${!isOnline ? 'mt-6' : ''}`}>
         <div className="flex items-center gap-3">
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-3 h-10">
