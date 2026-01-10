@@ -202,7 +202,7 @@ const Auth = () => {
             <img
               src={cobroLogo}
               alt="Cobro"
-              className="h-20 w-auto drop-shadow-2xl"
+              className="h-32 w-auto drop-shadow-2xl mx-auto"
             />
           </motion.div>
           <motion.p
