@@ -202,7 +202,8 @@ const Auth = () => {
             <img
               src={cobroLogo}
               alt="Cobro"
-              className="h-32 w-auto drop-shadow-2xl mx-auto"
+              className="h-32 w-auto mx-auto"
+              style={{ mixBlendMode: 'screen' }}
             />
           </motion.div>
           <motion.p
