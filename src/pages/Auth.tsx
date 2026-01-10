@@ -203,7 +203,6 @@ const Auth = () => {
               src={cobroLogo}
               alt="Cobro"
               className="h-32 w-auto mx-auto"
-              style={{ mixBlendMode: 'screen', filter: 'brightness(1.1) contrast(1.1)' }}
             />
           </motion.div>
           <motion.p

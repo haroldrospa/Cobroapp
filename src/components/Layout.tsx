@@ -121,7 +121,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Header con menú desplegable */}
       <div className={`flex items-center justify-between p-3 border-b border-border bg-card ${!isOnline ? 'mt-6' : ''}`}>
         <div className="flex items-center gap-3">
-          <img src={cobroLogo} alt="Cobro" className="h-10 w-auto" style={{ mixBlendMode: 'screen', filter: 'brightness(1.1) contrast(1.1)' }} />
+          <img src={cobroLogo} alt="Cobro" className="h-10 w-auto" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-3 h-10">
