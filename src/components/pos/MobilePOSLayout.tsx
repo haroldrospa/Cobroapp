@@ -31,7 +31,7 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
   const [activeTab, setActiveTab] = useState<MobileTab>('products');
   const [previousTab, setPreviousTab] = useState<MobileTab>('products');
   const [isAnimating, setIsAnimating] = useState(false);
-  
+
   // Swipe gesture handling
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
@@ -55,6 +55,8 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
   };
 
   // Swipe handlers
+  // Swipe handlers disabled as per user request
+  /*
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -79,12 +81,13 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
       handleTabChange(tabOrder[currentIndex - 1]);
     }
   };
+  */
 
   const getSlideDirection = (tab: MobileTab) => {
     if (!isAnimating) return '';
     const currentIndex = tabIndex[activeTab];
     const tabIndexValue = tabIndex[tab];
-    
+
     if (tab === activeTab) {
       // Entering tab
       return currentIndex > tabIndex[previousTab] ? 'animate-slide-in-right' : 'animate-slide-in-left';
@@ -95,18 +98,15 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Main Content Area with swipe detection */}
-      <div 
+      <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden relative touch-pan-y"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        className="flex-1 min-h-0 overflow-hidden relative"
       >
         {/* Products Tab */}
         <div className={cn(
           "absolute inset-0 h-full w-full transition-all duration-300 ease-out",
-          activeTab === 'products' 
-            ? 'opacity-100 translate-x-0 pointer-events-auto' 
+          activeTab === 'products'
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
             : activeTab === 'cart' || activeTab === 'payment'
               ? 'opacity-0 -translate-x-full pointer-events-none'
               : 'opacity-0 translate-x-full pointer-events-none'
@@ -117,8 +117,8 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
         {/* Cart Tab */}
         <div className={cn(
           "absolute inset-0 h-full w-full transition-all duration-300 ease-out",
-          activeTab === 'cart' 
-            ? 'opacity-100 translate-x-0 pointer-events-auto' 
+          activeTab === 'cart'
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
             : activeTab === 'products'
               ? 'opacity-0 translate-x-full pointer-events-none'
               : 'opacity-0 -translate-x-full pointer-events-none'
@@ -129,8 +129,8 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
         {/* Payment Tab */}
         <div className={cn(
           "absolute inset-0 h-full w-full transition-all duration-300 ease-out overflow-y-auto",
-          activeTab === 'payment' 
-            ? 'opacity-100 translate-x-0 pointer-events-auto' 
+          activeTab === 'payment'
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
             : 'opacity-0 translate-x-full pointer-events-none'
         )}>
           {paymentComponent}
@@ -147,8 +147,8 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
             </div>
             <div className="flex items-center gap-3">
               <span className="text-lg font-bold">${cartTotal}</span>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 onClick={() => setActiveTab('payment')}
                 className="gap-1"
               >
@@ -166,23 +166,23 @@ const MobilePOSLayout: React.FC<MobilePOSLayoutProps> = ({
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "flex-1 flex flex-col items-center justify-center py-3 px-2 transition-colors relative",
-                  isActive 
-                    ? "text-primary" 
+                  isActive
+                    ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <div className="relative">
                   <Icon className={cn("h-6 w-6", isActive && "scale-110 transition-transform")} />
                   {tab.badge !== undefined && tab.badge > 0 && (
-                    <Badge 
-                      variant="destructive" 
+                    <Badge
+                      variant="destructive"
                       className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center text-xs"
                     >
                       {tab.badge > 99 ? '99+' : tab.badge}

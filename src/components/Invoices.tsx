@@ -123,16 +123,7 @@ const Invoices: React.FC = () => {
   });
   const totalRevenue = completedSales.reduce((sum, sale) => sum + sale.total, 0);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p>Cargando facturas...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="space-y-6 animate-fade-in">

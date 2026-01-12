@@ -61,19 +61,46 @@ const InvoiceSearch: React.FC<InvoiceSearchProps> = ({
   customers = [],
   employees = [],
 }) => {
+  // Estado local para el término de búsqueda temporal
+  const [tempSearchTerm, setTempSearchTerm] = React.useState(searchTerm);
+
+  // Sincronizar cuando cambia externamente (ej: limpiar filtros)
+  React.useEffect(() => {
+    setTempSearchTerm(searchTerm);
+  }, [searchTerm]);
+
+  // Función para ejecutar la búsqueda
+  const handleSearch = () => {
+    onSearchChange(tempSearchTerm);
+  };
+
+  // Manejar Enter en el input
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <Card>
       <CardContent className="p-4">
         <div className="space-y-4">
           {/* Búsqueda principal */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Buscar por número de factura o cliente..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar por número de factura o cliente..."
+                value={tempSearchTerm}
+                onChange={(e) => setTempSearchTerm(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={handleSearch} className="px-6">
+              <Search className="h-4 w-4 mr-2" />
+              Buscar
+            </Button>
           </div>
 
           {/* Filtros principales */}
@@ -202,7 +229,13 @@ const InvoiceSearch: React.FC<InvoiceSearchProps> = ({
               onChange={(e) => onMaxAmountChange(e.target.value)}
               step="0.01"
             />
-            <Button variant="outline" onClick={onClearFilters}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTempSearchTerm('');
+                onClearFilters();
+              }}
+            >
               Limpiar Filtros
             </Button>
           </div>

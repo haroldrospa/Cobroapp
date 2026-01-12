@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "com.cobro.app",
-    "productName": "CobroApp",
+    "productName": "Cobro POS",
     "directories": {
       "output": "release/${version}"
     },
@@ -30,6 +30,7 @@
     "@capacitor/cli": "^7.4.3",
     "@capacitor/core": "^7.4.3",
     "@capacitor/ios": "^7.4.3",
+    "@emotion/is-prop-valid": "^1.4.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",

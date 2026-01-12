@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.cobro.app',
-  appName: 'CobroApp',
+  appName: 'Cobro POS',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

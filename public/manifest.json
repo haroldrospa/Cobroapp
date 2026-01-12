@@ -1,6 +1,6 @@
 {
-  "name": "FacturaFlex - Sistema POS",
-  "short_name": "FacturaFlex",
+  "name": "Cobro POS",
+  "short_name": "Cobro POS",
   "description": "Sistema completo de facturación y punto de venta para República Dominicana",
   "start_url": "/",
   "display": "standalone",
@@ -9,21 +9,23 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/placeholder.svg",
+      "src": "/pwa-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/placeholder.svg",
+      "src": "/pwa-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [
     {
-      "src": "/placeholder.svg",
-      "type": "image/svg+xml",
-      "sizes": "540x720",
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "form_factor": "narrow"
     }
   ]

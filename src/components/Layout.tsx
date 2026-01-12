@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useTheme } from '@/components/ThemeProvider';
-import cobroLogoLight from '@/assets/cobro-logo-light.jpg';
+import cobroLogoLight from '@/assets/cobro-logo-light.png';
 import cobroLogoDark from '@/assets/cobro-logo-dark.png';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { useQueryClient } from '@tanstack/react-query';

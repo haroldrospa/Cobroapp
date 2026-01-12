@@ -1243,8 +1243,17 @@ const Settings = () => {
   );
 
   const mobileInvoicesSectionContent = (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-10">
       <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="invoice-prefix">Prefijo de Factura</Label>
+          <Input
+            id="invoice-prefix"
+            value={invoiceSettings.invoicePrefix}
+            onChange={(e) => setInvoiceSettings({ ...invoiceSettings, invoicePrefix: e.target.value.toUpperCase() })}
+            placeholder="FAC-"
+          />
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="currency">Moneda</Label>
@@ -1259,6 +1268,7 @@ const Settings = () => {
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="tax-rate">Tasa de Impuesto (%)</Label>
           <Input
@@ -1268,6 +1278,7 @@ const Settings = () => {
             onChange={(e) => setInvoiceSettings({ ...invoiceSettings, defaultTaxRate: e.target.value })}
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="payment-terms">Términos de Pago (días)</Label>
           <Input
@@ -1277,7 +1288,8 @@ const Settings = () => {
             onChange={(e) => setInvoiceSettings({ ...invoiceSettings, paymentTerms: e.target.value })}
           />
         </div>
-        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+
+        <div className="flex items-center justify-between p-3 bg-card border rounded-lg">
           <div>
             <p className="font-medium text-sm">Auto-incrementar</p>
             <p className="text-xs text-muted-foreground">Incrementar número automáticamente</p>
@@ -1287,10 +1299,83 @@ const Settings = () => {
             onCheckedChange={(checked) => setInvoiceSettings({ ...invoiceSettings, autoIncrement: checked })}
           />
         </div>
+
+        <div className="flex items-center justify-between p-3 bg-card border rounded-lg">
+          <div>
+            <p className="font-medium text-sm">Código de Barras NCF</p>
+            <p className="text-xs text-muted-foreground">Mostrar código en facturas</p>
+          </div>
+          <Switch
+            checked={invoiceSettings.showBarcode}
+            onCheckedChange={(checked) => setInvoiceSettings({ ...invoiceSettings, showBarcode: checked })}
+          />
+        </div>
+
+        <Separator />
+        <h4 className="text-sm font-medium">Estilo de Factura</h4>
+
+        <div className="space-y-2">
+          <Label htmlFor="font-size-mobile">Tamaño de Fuente (px)</Label>
+          <div className="flex items-center gap-4">
+            <Input
+              id="font-size-mobile"
+              type="number"
+              value={printSettings.fontSize || 12}
+              onChange={(e) => setPrintSettings({ ...printSettings, fontSize: parseInt(e.target.value) || 12 })}
+              className="w-20"
+            />
+            <input
+              type="range"
+              min="8"
+              max="24"
+              value={printSettings.fontSize || 12}
+              onChange={(e) => setPrintSettings({ ...printSettings, fontSize: parseInt(e.target.value) || 12 })}
+              className="flex-1"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="logo-margin-top-mobile" className="text-xs">Margen Logo Sup.</Label>
+            <Select
+              value={printSettings.logoMarginTop || '6px'}
+              onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginTop: value })}
+            >
+              <SelectTrigger id="logo-margin-top-mobile" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0px">0px</SelectItem>
+                <SelectItem value="4px">4px</SelectItem>
+                <SelectItem value="8px">8px</SelectItem>
+                <SelectItem value="12px">12px</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="logo-margin-bottom-mobile" className="text-xs">Margen Logo Inf.</Label>
+            <Select
+              value={printSettings.logoMarginBottom || '6px'}
+              onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginBottom: value })}
+            >
+              <SelectTrigger id="logo-margin-bottom-mobile" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0px">0px</SelectItem>
+                <SelectItem value="4px">4px</SelectItem>
+                <SelectItem value="8px">8px</SelectItem>
+                <SelectItem value="12px">12px</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
+
       <Button onClick={() => handleSaveSettings('facturas')} disabled={loading || isUpdatingStoreSettings} className="w-full">
         <Save className="mr-2 h-4 w-4" />
-        Guardar
+        Guardar Configuración
       </Button>
     </div>
   );
@@ -1350,55 +1435,212 @@ const Settings = () => {
   );
 
   const mobilePrintSectionContent = (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="paper-size">Tamaño de Papel</Label>
-        <Select
-          value={printSettings.paperSize}
-          onValueChange={(value) => setPrintSettings({ ...printSettings, paperSize: value })}
-        >
-          <SelectTrigger id="paper-size">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="80mm">80mm (Térmica Estándar)</SelectItem>
-            <SelectItem value="50mm">50mm (Térmica Pequeña)</SelectItem>
-            <SelectItem value="A4">A4</SelectItem>
-            <SelectItem value="carta">Carta</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="flex items-center justify-between p-4 bg-card border rounded-lg">
-        <div>
-          <p className="font-medium text-sm">Impresora Térmica</p>
-          <p className="text-xs text-muted-foreground">
-            {printSettings.thermalPrinterConnected ? printSettings.thermalPrinterName : 'No conectada'}
-          </p>
+    <div className="space-y-6 pb-20">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="paper-size">Tamaño de Papel</Label>
+          <Select
+            value={printSettings.paperSize}
+            onValueChange={(value) => setPrintSettings({ ...printSettings, paperSize: value })}
+          >
+            <SelectTrigger id="paper-size">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="80mm">80mm (Térmica Estándar)</SelectItem>
+              <SelectItem value="50mm">50mm (Térmica Pequeña)</SelectItem>
+              <SelectItem value="A4">A4</SelectItem>
+              <SelectItem value="carta">Carta</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3">
+            <p className="text-[10px] text-blue-600 dark:text-blue-400">
+              💡 <span className="font-semibold">Importante:</span> Esta configuración se aplica a "Imprimir directamente" en el POS.
+            </p>
+          </div>
         </div>
-        <Switch
-          checked={printSettings.useThermalPrinter}
-          onCheckedChange={(checked) => setPrintSettings({ ...printSettings, useThermalPrinter: checked })}
-          disabled={!printSettings.thermalPrinterConnected}
-        />
-      </div>
-      {!printSettings.thermalPrinterConnected && (
-        <Button
-          onClick={handleConnectThermalPrinter}
-          variant="outline"
-          className="w-full"
-        >
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="page-margin" className="text-xs">Margen Página</Label>
+            <Select
+              value={printSettings.pageMargin}
+              onValueChange={(value) => setPrintSettings({ ...printSettings, pageMargin: value })}
+            >
+              <SelectTrigger id="page-margin" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0mm">0mm</SelectItem>
+                <SelectItem value="2mm">2mm</SelectItem>
+                <SelectItem value="4mm">4mm</SelectItem>
+                <SelectItem value="6mm">6mm</SelectItem>
+                <SelectItem value="8mm">8mm</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="container-padding" className="text-xs">Padding Interno</Label>
+            <Select
+              value={printSettings.containerPadding}
+              onValueChange={(value) => setPrintSettings({ ...printSettings, containerPadding: value })}
+            >
+              <SelectTrigger id="container-padding" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0px">0px</SelectItem>
+                <SelectItem value="4px">4px</SelectItem>
+                <SelectItem value="8px">8px</SelectItem>
+                <SelectItem value="12px">12px</SelectItem>
+                <SelectItem value="16px">16px</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="logo-margin-top" className="text-xs">Margen Logo (Superior)</Label>
+            <Select
+              value={printSettings.logoMarginTop || '6px'}
+              onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginTop: value })}
+            >
+              <SelectTrigger id="logo-margin-top" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0px">0px</SelectItem>
+                <SelectItem value="2px">2px</SelectItem>
+                <SelectItem value="4px">4px</SelectItem>
+                <SelectItem value="6px">6px</SelectItem>
+                <SelectItem value="8px">8px</SelectItem>
+                <SelectItem value="12px">12px</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="logo-margin-bottom" className="text-xs">Margen Logo (Inferior)</Label>
+            <Select
+              value={printSettings.logoMarginBottom}
+              onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginBottom: value })}
+            >
+              <SelectTrigger id="logo-margin-bottom" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0px">0px</SelectItem>
+                <SelectItem value="2px">2px</SelectItem>
+                <SelectItem value="4px">4px</SelectItem>
+                <SelectItem value="6px">6px</SelectItem>
+                <SelectItem value="8px">8px</SelectItem>
+                <SelectItem value="12px">12px</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium flex items-center">
+            <Printer className="mr-2 h-4 w-4" />
+            Información del Formato
+          </h4>
+          <div className="bg-muted p-3 rounded-lg space-y-1">
+            {printSettings.paperSize === '80mm' && (
+              <>
+                <p className="text-[11px]"><strong>Ancho:</strong> 80mm (3.15")</p>
+                <p className="text-[11px]"><strong>Tipo:</strong> Térmica de 80mm</p>
+                <p className="text-[11px]"><strong>Método:</strong> Impresión directa</p>
+              </>
+            )}
+            {printSettings.paperSize === '50mm' && (
+              <>
+                <p className="text-[11px]"><strong>Ancho:</strong> 50mm (2")</p>
+                <p className="text-[11px]"><strong>Tipo:</strong> Térmica portátil</p>
+                <p className="text-[11px]"><strong>Método:</strong> Impresión directa</p>
+              </>
+            )}
+            {printSettings.paperSize === 'A4' || printSettings.paperSize === 'carta' ? (
+              <>
+                <p className="text-[11px]"><strong>Documento:</strong> Formato completo</p>
+                <p className="text-[11px]"><strong>Tipo:</strong> Láser/Inyección</p>
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        <Separator />
+
+        <h4 className="text-sm font-medium flex items-center">
           <Printer className="mr-2 h-4 w-4" />
-          Conectar Impresora
-        </Button>
-      )}
-      <div className="flex gap-2">
-        <Button onClick={handleSavePrintSettings} disabled={loading || isUpdatingStoreSettings} className="flex-1">
-          <Save className="mr-2 h-4 w-4" />
-          Guardar
-        </Button>
-        <Button onClick={handleTestPrint} variant="outline">
-          <Printer className="h-4 w-4" />
-        </Button>
+          Impresora Térmica
+        </h4>
+
+        <div className="flex items-center justify-between p-4 bg-card border rounded-lg">
+          <div>
+            <p className="font-medium text-sm">Impresión Directa</p>
+            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+              {printSettings.thermalPrinterConnected ? (
+                <>
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  {printSettings.thermalPrinterName}
+                </>
+              ) : 'No conectada'}
+            </p>
+          </div>
+          <Switch
+            checked={printSettings.useThermalPrinter}
+            onCheckedChange={(checked) => setPrintSettings({ ...printSettings, useThermalPrinter: checked })}
+            disabled={!printSettings.thermalPrinterConnected}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={handleConnectThermalPrinter}
+            variant="outline"
+            className="h-10 text-xs"
+          >
+            <Printer className="mr-2 h-4 w-4 text-primary" />
+            {printSettings.thermalPrinterConnected ? 'Cambiar' : 'Conectar'}
+          </Button>
+
+          {printSettings.thermalPrinterConnected && (
+            <Button
+              onClick={() => {
+                thermalPrinter.disconnect();
+                setPrintSettings(prev => ({ ...prev, thermalPrinterConnected: false }));
+              }}
+              variant="outline"
+              className="h-10 text-xs text-destructive border-destructive/20 hover:bg-destructive/10"
+            >
+              Desconectar
+            </Button>
+          )}
+        </div>
+
+        <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4 space-y-2">
+          <h5 className="text-xs font-semibold text-blue-700 dark:text-blue-400">Consejos</h5>
+          <ul className="text-[10px] space-y-1 text-muted-foreground list-disc pl-4">
+            <li>Realiza una prueba antes de usar en producción</li>
+            <li>Verifica si el tamaño coincide con tu impresora</li>
+            <li>Para térmicas, usa papel de calidad</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-2 sticky bottom-0 bg-background/80 backdrop-blur-sm pt-4 pb-2">
+          <Button onClick={handleSavePrintSettings} disabled={loading || isUpdatingStoreSettings} className="flex-1">
+            <Save className="mr-2 h-4 w-4" />
+            Guardar
+          </Button>
+          <Button onClick={handleTestPrint} variant="outline">
+            <Printer className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
