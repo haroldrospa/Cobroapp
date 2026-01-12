@@ -77,15 +77,33 @@ export const ShopperProfileDialog: React.FC<ShopperProfileDialogProps> = ({
                 });
             },
             (error) => {
-                console.error(error);
+                console.error('[Geolocation Error]', error);
                 setGettingLocation(false);
+
+                let errorMessage = "No pudimos obtener tu ubicación.";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = "Permiso denegado. Activa la ubicación en tu navegador.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = "Ubicación no disponible. Verifica tu GPS.";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = "Tiempo agotado. Intenta nuevamente.";
+                        break;
+                }
+
                 toast({
                     title: "Error de ubicación",
-                    description: "No pudimos obtener tu ubicación. Verifica los permisos.",
+                    description: errorMessage,
                     variant: "destructive"
                 });
             },
-            { enableHighAccuracy: true }
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,        // 15 seconds timeout
+                maximumAge: 0          // Don't use cached position
+            }
         );
     };
 

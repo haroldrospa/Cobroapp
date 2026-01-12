@@ -1,5 +1,7 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+import { useQuery } from "@tanstack/react-query"
+import { supabase } from "@/integrations/supabase/client"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -45,16 +47,49 @@ AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
 const AlertDialogHeader = ({
   className,
+  children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  // Fetch company logo
+  const { data: companySettings } = useQuery({
+    queryKey: ['company-settings-logo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('logo_url')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col space-y-2 text-center sm:text-left",
+        className
+      )}
+      {...props}
+    >
+      {/* Company Logo Icon */}
+      {companySettings?.logo_url && (
+        <div className="mx-auto sm:mx-0 mb-2">
+          <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center border-2 border-border overflow-hidden">
+            <img
+              src={companySettings.logo_url}
+              alt="Logo"
+              className="w-full h-full object-contain p-2"
+            />
+          </div>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
 AlertDialogHeader.displayName = "AlertDialogHeader"
 
 const AlertDialogFooter = ({

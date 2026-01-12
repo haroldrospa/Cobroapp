@@ -38,7 +38,7 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
   const handleUSBThermalPrint = async () => {
     setIsConnecting(true);
     setConnectionType('usb');
-    
+
     try {
       if (!thermalPrinter.isSupported()) {
         toast({
@@ -52,7 +52,7 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
 
       // Connect to the printer
       const connectResult = await thermalPrinter.connect();
-      
+
       if (!connectResult.success) {
         toast({
           title: "Error de conexión",
@@ -78,8 +78,8 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
           address: dbCompanyInfo.address,
         };
 
-        const paperSize = (printSettings.paperSize === '50mm' || printSettings.paperSize === '80mm') 
-          ? printSettings.paperSize 
+        const paperSize = (printSettings.paperSize === '50mm' || printSettings.paperSize === '80mm')
+          ? printSettings.paperSize
           : '80mm';
 
         const invoiceData = {
@@ -139,7 +139,7 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
   const handleBluetoothConnect = async () => {
     setIsConnecting(true);
     setConnectionType('bluetooth');
-    
+
     try {
       if (!('bluetooth' in navigator)) {
         toast({
@@ -155,12 +155,12 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
         filters: [{ services: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2'] }],
         optionalServices: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2']
       });
-      
+
       toast({
         title: "Impresora Bluetooth conectada",
         description: `Conectado a: ${device.name}`,
       });
-      
+
       onPrinterSelected('bluetooth');
       onClose();
     } catch (error: any) {
@@ -185,44 +185,42 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
   };
 
   // This opens the native system print dialog - ONLY for regular printers (laser/inkjet)
-  const handleSystemPrint = () => {
+  const handleSystemPrint = async () => {
     if (invoiceContent) {
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      if (printWindow) {
-        printWindow.document.write(invoiceContent);
-        printWindow.document.close();
-        
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-          }, 200);
-        };
-        
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      } else {
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
-        
-        const iframeDoc = iframe.contentWindow?.document;
-        if (iframeDoc) {
-          iframeDoc.open();
-          iframeDoc.write(invoiceContent);
-          iframeDoc.close();
-          
-          setTimeout(() => {
-            iframe.contentWindow?.print();
-            setTimeout(() => {
-              document.body.removeChild(iframe);
-            }, 1000);
-          }, 300);
+      // Use browser print with new robust print handler
+      const { handlePrint, injectPrintStyles, markContentAsPrintable } = await import('@/utils/printHandler');
+
+      // Ensure styles are injected
+      injectPrintStyles();
+
+      // Determine size from settings
+      let format: '80mm' | '58mm' | 'A4' = '80mm';
+      if (printSettings.paperSize === '50mm' || printSettings.paperSize === '58mm') {
+        format = '58mm';
+      } else if (printSettings.paperSize === 'A4' || printSettings.paperSize === 'carta') {
+        format = 'A4';
+      }
+
+      // Create a temporary content div for printing
+      let printContainer = document.getElementById('temp-sys-print-container');
+      if (!printContainer) {
+        printContainer = document.createElement('div');
+        printContainer.id = 'temp-sys-print-container';
+        document.body.appendChild(printContainer);
+      }
+
+      // Inject the content
+      printContainer.innerHTML = invoiceContent;
+
+      // Mark as printable
+      markContentAsPrintable('temp-sys-print-container');
+
+      try {
+        await handlePrint(format);
+      } finally {
+        // Clean up
+        if (printContainer.parentNode) {
+          printContainer.parentNode.removeChild(printContainer);
         }
       }
     }
@@ -241,26 +239,53 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
             Elige cómo deseas imprimir tu factura
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-3 py-2">
-          {/* USB Thermal Printer - Uses ESC/POS commands */}
-          <Card className="group hover:shadow-md transition-all duration-200 hover:border-blue-500/50 cursor-pointer border-2 border-blue-500/30 bg-blue-500/5">
+          {/* System Printer - For ANY printer installed in OS */}
+          <Card className="group hover:shadow-md transition-all duration-200 hover:border-green-500/50 cursor-pointer border-2 border-green-500/30 bg-green-500/5">
             <Button
               variant="ghost"
               className="w-full h-auto py-3 px-3 flex items-center gap-3 hover:bg-transparent"
+              onClick={handleSystemPrint}
+              disabled={isConnecting}
+            >
+              <div className="p-2 rounded-md bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
+                <Monitor className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="text-left flex-1">
+                <span className="font-semibold text-sm block">🖨️ Impresora del Sistema / PDF</span>
+                <span className="text-xs text-muted-foreground">Para cualquier impresora instalada (PC/Móvil) o guardar como PDF. Soporta térmicas si están instaladas.</span>
+              </div>
+            </Button>
+          </Card>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Conexión Directa (Expérimental)</span>
+            </div>
+          </div>
+
+          {/* USB Thermal Printer - Uses ESC/POS commands */}
+          <Card className="group hover:shadow-md transition-all duration-200 hover:border-blue-500/50 cursor-pointer">
+            <Button
+              variant="ghost"
+              className="w-full h-auto py-2 px-3 flex items-center gap-2 hover:bg-transparent"
               onClick={handleUSBThermalPrint}
               disabled={isConnecting}
             >
-              <div className="p-2 rounded-md bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
+              <div className="p-1.5 rounded-md bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
                 {isConnecting && connectionType === 'usb' ? (
-                  <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                  <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
                 ) : (
-                  <Usb className="h-5 w-5 text-blue-600" />
+                  <Usb className="h-4 w-4 text-blue-600" />
                 )}
               </div>
               <div className="text-left flex-1">
-                <span className="font-semibold text-sm block">🖨️ Impresora Térmica USB</span>
-                <span className="text-xs text-muted-foreground">Recomendado para impresoras de ticket (80mm/50mm)</span>
+                <span className="font-semibold text-sm block">Conexión Directa USB</span>
+                <span className="text-xs text-muted-foreground">Solo para impresoras térmicas ESC/POS (Chrome/Edge)</span>
               </div>
             </Button>
           </Card>
@@ -281,44 +306,17 @@ export const PrinterSelectionDialog: React.FC<PrinterSelectionDialogProps> = ({
                 )}
               </div>
               <div className="text-left flex-1">
-                <span className="font-semibold text-sm block">Impresora Bluetooth</span>
-                <span className="text-xs text-muted-foreground">Impresoras térmicas inalámbricas</span>
+                <span className="font-semibold text-sm block">Conexión Directa Bluetooth</span>
+                <span className="text-xs text-muted-foreground">Solo para impresoras térmicas móviles compatibles</span>
               </div>
             </Button>
           </Card>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Impresoras normales</span>
-            </div>
-          </div>
-
-          {/* System Printer - For regular printers ONLY */}
-          <Card className="group hover:shadow-md transition-all duration-200 hover:border-green-500/50 cursor-pointer">
-            <Button
-              variant="ghost"
-              className="w-full h-auto py-2 px-3 flex items-center gap-2 hover:bg-transparent"
-              onClick={handleSystemPrint}
-              disabled={isConnecting}
-            >
-              <div className="p-1.5 rounded-md bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
-                <Monitor className="h-4 w-4 text-green-600" />
-              </div>
-              <div className="text-left flex-1">
-                <span className="font-semibold text-sm block">Impresora Normal (Láser/Tinta)</span>
-                <span className="text-xs text-muted-foreground">HP, Epson, Canon, etc. (NO térmicas)</span>
-              </div>
-            </Button>
-          </Card>
-
-          {/* Warning about thermal printers */}
-          <div className="flex items-start gap-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
-            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              <strong>Importante:</strong> Si tienes una impresora térmica (de tickets), usa la opción "Impresora Térmica USB". La opción de impresora normal imprimirá caracteres extraños en térmicas.
+          {/* Info tip */}
+          <div className="flex items-start gap-2 p-2 bg-slate-50 border border-slate-200 rounded-md dark:bg-slate-900/50 dark:border-slate-800">
+            <AlertCircle className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              <strong>Nota:</strong> Si está en un móvil o tiene problemas con la conexión directa, use la opción <strong>"Impresora del Sistema"</strong>.
             </p>
           </div>
         </div>

@@ -55,6 +55,7 @@ import {
   Trash2,
   Edit
 } from 'lucide-react';
+import { injectPrintStyles } from '@/utils/printHandler';
 
 const Settings = () => {
   const { toast } = useToast();
@@ -137,12 +138,17 @@ const Settings = () => {
     paymentTerms: '30',
     footerText: 'Gracias por su preferencia',
     emailGreeting: '¡Hola!',
-    emailMessage: 'Le agradecemos sinceramente por elegirnos y por la confianza depositada en nosotros. Valoramos enormemente su preferencia y estamos comprometidos con brindarle siempre la mejor calidad y servicio.'
+    emailMessage: 'Le agradecemos sinceramente por elegirnos y por la confianza depositada en nosotros. Valoramos enormemente su preferencia y estamos comprometidos con brindarle siempre la mejor calidad y servicio.',
+    showBarcode: false
   });
 
   // Sync invoice settings from database
+  // Sync invoice settings from database
   useEffect(() => {
     if (storeSettings) {
+      // Load local settings
+      const localSettings = JSON.parse(localStorage.getItem('invoice_settings_local') || '{}');
+
       setInvoiceSettings({
         nextInvoiceNumber: '0001',
         invoicePrefix: storeSettings.invoice_prefix || 'FAC-',
@@ -153,7 +159,8 @@ const Settings = () => {
         paymentTerms: storeSettings.payment_terms != null ? String(storeSettings.payment_terms) : '30',
         footerText: storeSettings.invoice_footer_text || 'Gracias por su preferencia',
         emailGreeting: storeSettings.email_greeting || '¡Hola!',
-        emailMessage: storeSettings.email_message || 'Le agradecemos sinceramente por elegirnos y por la confianza depositada en nosotros. Valoramos enormemente su preferencia y estamos comprometidos con brindarle siempre la mejor calidad y servicio.'
+        emailMessage: storeSettings.email_message || 'Le agradecemos sinceramente por elegirnos y por la confianza depositada en nosotros. Valoramos enormemente su preferencia y estamos comprometidos con brindarle siempre la mejor calidad y servicio.',
+        showBarcode: storeSettings.show_barcode || localSettings.showBarcode || false // Load from DB or Local
       });
       setShopType(storeSettings.shop_type || 'default');
     }
@@ -167,7 +174,8 @@ const Settings = () => {
     storeSettings?.invoice_footer_text,
     storeSettings?.email_greeting,
     storeSettings?.email_message,
-    storeSettings?.shop_type
+    storeSettings?.shop_type,
+    storeSettings?.show_barcode // NEW: Watch for changes
   ]);
 
   // System Settings State - synced with storeSettings
@@ -238,22 +246,52 @@ const Settings = () => {
     useThermalPrinter: false,
     thermalPrinterConnected: false,
     thermalPrinterName: '',
+    pageMargin: '0mm',
+    containerPadding: '4px',
+    logoMarginTop: '6px',
+    logoMarginBottom: '6px',
+    logoWidth: 'auto', // Fix TS error by initializing
+    fontSize: 12, // Default font size for invoice
   });
 
   // Sync print settings from database
   useEffect(() => {
     if (storeSettings) {
-      setPrintSettings(prev => ({
-        ...prev,
-        paperSize: storeSettings.paper_size || '80mm',
-        useThermalPrinter: storeSettings.use_thermal_printer ?? false,
-        thermalPrinterName: storeSettings.thermal_printer_name || '',
-      }));
+      const hasPrinterSaved = Boolean(storeSettings.thermal_printer_name);
+
+      console.log('📡 Cargando configuración de impresora desde DB:', {
+        thermal_printer_name: storeSettings.thermal_printer_name,
+        use_thermal_printer: storeSettings.use_thermal_printer,
+        hasPrinterSaved,
+      });
+
+      setPrintSettings(prev => {
+        // Load local margin settings
+        const localMargins = JSON.parse(localStorage.getItem('print_margins_settings') || '{}');
+
+        return {
+          ...prev,
+          paperSize: storeSettings.paper_size || '80mm',
+          useThermalPrinter: storeSettings.use_thermal_printer ?? false,
+          thermalPrinterName: storeSettings.thermal_printer_name || '',
+          thermalPrinterConnected: hasPrinterSaved,
+          // Prioritize LocalStorage -> DB -> Default
+          pageMargin: localMargins.pageMargin || storeSettings.page_margin || '0mm',
+          containerPadding: localMargins.containerPadding || storeSettings.container_padding || '4px',
+          logoMarginTop: localMargins.logoMarginTop || storeSettings.logo_margin_top || '6px',
+          logoMarginBottom: localMargins.logoMarginBottom || storeSettings.logo_margin_bottom || '6px',
+          logoWidth: localMargins.logoWidth || 'auto', // Load logo width setting
+          fontSize: localMargins.fontSize || storeSettings.invoice_font_size || 12, // Load font size
+        };
+      });
+
+      console.log('✅ Configuración de impresora cargada');
     }
   }, [storeSettings?.paper_size, storeSettings?.use_thermal_printer, storeSettings?.thermal_printer_name]);
 
   // Thermal printer dialog state
   const [showPrinterDialog, setShowPrinterDialog] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -268,10 +306,13 @@ const Settings = () => {
       }
 
       try {
+        setLogoUploadError(null);
+        // Upload to Supabase storage
         // Upload to Supabase storage
         const publicUrl = await uploadLogo(file);
-        setLogoPreview(publicUrl);
-        setCompanyInfo({ ...companyInfo, logo: publicUrl });
+        const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`; // Bypass cache
+        setLogoPreview(urlWithTimestamp);
+        setCompanyInfo({ ...companyInfo, logo: urlWithTimestamp });
 
         toast({
           title: "Logo subido",
@@ -284,6 +325,7 @@ const Settings = () => {
           description: error.message || "No se pudo subir el logo.",
           variant: "destructive",
         });
+        setLogoUploadError(error.message || "No se pudo subir el logo. Verifique permisos.");
       }
     }
   };
@@ -324,18 +366,43 @@ const Settings = () => {
         // Also sync to localStorage for offline access
         localStorage.setItem('company-info', JSON.stringify(companyInfo));
       } else if (section === 'facturas') {
-        // Save invoice settings to database
-        await updateStoreSettings({
-          invoice_prefix: invoiceSettings.invoicePrefix,
-          auto_increment: invoiceSettings.autoIncrement,
-          show_tax: invoiceSettings.showTax,
-          default_tax_rate: parseFloat(invoiceSettings.defaultTaxRate) || 18,
-          currency: invoiceSettings.currency,
-          payment_terms: parseInt(invoiceSettings.paymentTerms) || 30,
-          invoice_footer_text: invoiceSettings.footerText,
-          email_greeting: invoiceSettings.emailGreeting,
-          email_message: invoiceSettings.emailMessage,
-        });
+        // Save local settings (like barcode) to localStorage FIRST to ensure persistence
+        const localSettings = JSON.parse(localStorage.getItem('invoice_settings_local') || '{}');
+        localStorage.setItem('invoice_settings_local', JSON.stringify({
+          ...localSettings,
+          showBarcode: invoiceSettings.showBarcode
+        }));
+
+        // Also save print margins & font size since it's now editable in this section
+        localStorage.setItem('print_margins_settings', JSON.stringify({
+          pageMargin: printSettings.pageMargin,
+          containerPadding: printSettings.containerPadding,
+          logoMarginTop: printSettings.logoMarginTop,
+          logoMarginBottom: printSettings.logoMarginBottom,
+          logoWidth: printSettings.logoWidth,
+          fontSize: printSettings.fontSize // Save font size FROM INVOICE TAB
+        }));
+
+        // Refresh print styles immediately
+        injectPrintStyles();
+
+        // Try access DB update, but don't block if it fails (e.g. missing column)
+        try {
+          await updateStoreSettings({
+            invoice_prefix: invoiceSettings.invoicePrefix,
+            auto_increment: invoiceSettings.autoIncrement,
+            show_tax: invoiceSettings.showTax,
+            default_tax_rate: parseFloat(invoiceSettings.defaultTaxRate) || 18,
+            currency: invoiceSettings.currency,
+            payment_terms: parseInt(invoiceSettings.paymentTerms) || 30,
+            invoice_footer_text: invoiceSettings.footerText,
+            email_greeting: invoiceSettings.emailGreeting,
+            email_message: invoiceSettings.emailMessage,
+            show_barcode: invoiceSettings.showBarcode,
+          });
+        } catch (err) {
+          console.warn('Database update failed for invoice settings (likely missing columns), but local settings saved.', err);
+        }
       } else if (section === 'pagos') {
         // Save payment methods to database
         await updateStoreSettings({
@@ -360,12 +427,30 @@ const Settings = () => {
           pos_layout_grid_cols: parseInt(systemSettings.posLayoutGridCols) || 2,
         });
       } else if (section === 'impresion') {
-        // Save print settings to database
-        await updateStoreSettings({
-          paper_size: printSettings.paperSize,
-          use_thermal_printer: printSettings.useThermalPrinter,
-          thermal_printer_name: printSettings.thermalPrinterName || null,
-        });
+        // Save visual settings to LocalStorage FIRST (as DB likely lacks these columns)
+        localStorage.setItem('print_margins_settings', JSON.stringify({
+          pageMargin: printSettings.pageMargin,
+          containerPadding: printSettings.containerPadding,
+          logoMarginTop: printSettings.logoMarginTop,
+          logoMarginBottom: printSettings.logoMarginBottom,
+          logoWidth: printSettings.logoWidth, // Ensure this is preserved/saved
+          fontSize: printSettings.fontSize // Save font size
+        }));
+
+        // Save supported print settings to database with try/catch
+        try {
+          await updateStoreSettings({
+            paper_size: printSettings.paperSize,
+            use_thermal_printer: printSettings.useThermalPrinter,
+            thermal_printer_name: printSettings.thermalPrinterName || null,
+            invoice_font_size: printSettings.fontSize, // Save to DB if supported
+          });
+        } catch (err) {
+          console.warn('Database update failed for print settings, but local settings saved.', err);
+        }
+
+        // Refresh print styles immediately
+        injectPrintStyles();
       } else if (section === 'tienda') {
         await updateStoreSettings({
           shop_type: shopType
@@ -382,9 +467,18 @@ const Settings = () => {
         'tienda': 'Tienda'
       };
 
+      let toastTitle = "Configuración guardada";
+      let toastDesc = `Los cambios en ${sectionNames[section] || section} se han guardado correctamente.`;
+
+      // Custom message for sections that save to localStorage
+      if (section === 'impresion' || section === 'facturas') {
+        toastTitle = "Configuración Actualizada";
+        toastDesc = `La configuración de ${sectionNames[section] || section} (incluyendo tamaño de letra) se ha guardado correctamente.`;
+      }
+
       toast({
-        title: "Configuración guardada",
-        description: `Los cambios en ${sectionNames[section] || section} se han guardado correctamente.`,
+        title: toastTitle,
+        description: toastDesc,
       });
     } catch (error) {
       toast({
@@ -414,22 +508,7 @@ const Settings = () => {
   };
 
   const handleSavePrintSettings = async () => {
-    setLoading(true);
-    try {
-      await updateStoreSettings({
-        paper_size: printSettings.paperSize,
-        use_thermal_printer: printSettings.useThermalPrinter,
-        thermal_printer_name: printSettings.thermalPrinterName || null,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo guardar la configuración de impresión.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    await handleSaveSettings('impresion');
   };
 
   const handleTestPrint = () => {
@@ -454,18 +533,23 @@ const Settings = () => {
             /* Page setup */
             @page {
               margin: 0;
-              size: ${printSettings.paperSize === '80mm' ? '80mm auto' :
-        printSettings.paperSize === '50mm' ? '50mm auto' :
-          printSettings.paperSize === 'carta' ? 'letter' : 'auto'};
+              size: ${printSettings.paperSize === '80mm' || printSettings.paperSize === '50mm' ? 'auto' : printSettings.paperSize === 'carta' ? 'letter' : 'auto'};
+            }
+
+            @media print {
+              html, body {
+                width: ${printSettings.paperSize === '80mm' ? '72mm' : printSettings.paperSize === '50mm' ? '48mm' : '100%'};
+                margin: 0; /* Important for thermal */
+              }
             }
 
             body {
               font-family: 'Courier New', Courier, monospace;
               margin: 0;
               width: ${printSettings.paperSize === '80mm' ? '72mm' :
-        printSettings.paperSize === '50mm' ? '45mm' : '100%'};
+        printSettings.paperSize === '50mm' ? '48mm' : '100%'};
               /* Add a small margin for the content itself inside the paper */
-              padding: ${printSettings.paperSize === '80mm' || printSettings.paperSize === '50mm' ? '4mm' : '20px'};
+              padding: ${printSettings.paperSize === '80mm' || printSettings.paperSize === '50mm' ? '2mm' : '20px'};
               color: #000;
               background: #fff;
             }
@@ -482,9 +566,9 @@ const Settings = () => {
             }
 
             /* Adjust sizes for thermal printing readability */
-            h1 { font-size: ${printSettings.paperSize === '50mm' ? '14px' : '18px'}; margin: 0; }
-            h2 { font-size: ${printSettings.paperSize === '50mm' ? '12px' : '14px'}; margin: 5px 0; }
-            p { font-size: ${printSettings.paperSize === '50mm' ? '10px' : '12px'}; margin: 3px 0; }
+            h1 { font-size: ${Math.round((printSettings.fontSize || 12) * 1.5)}px; margin: 0; }
+            h2 { font-size: ${Math.round((printSettings.fontSize || 12) * 1.3)}px; margin: 5px 0; }
+            p { font-size: ${printSettings.fontSize || 12}px; margin: 3px 0; }
             
             /* Helper classes */
             .text-center { text-align: center; }
@@ -610,58 +694,179 @@ const Settings = () => {
     setShowPrinterDialog(true);
   };
 
-  const handlePrinterConnected = (deviceName: string) => {
+  const handlePrinterConnected = async (deviceName: string) => {
+    console.log('🖨️ Conectando impresora:', deviceName);
+
+    // Actualizar estado local
     setPrintSettings(prev => ({
       ...prev,
       thermalPrinterConnected: true,
       thermalPrinterName: deviceName,
     }));
+
+    // Guardar en la base de datos
+    try {
+      console.log('💾 Guardando en base de datos...', {
+        thermal_printer_name: deviceName,
+        use_thermal_printer: true,
+      });
+
+      await updateStoreSettings({
+        thermal_printer_name: deviceName,
+        use_thermal_printer: true,
+      });
+
+      console.log('✅ Impresora guardada exitosamente en la base de datos');
+
+      toast({
+        title: "Impresora Guardada",
+        description: `"${deviceName}" ha sido configurada como impresora predeterminada`,
+      });
+    } catch (error) {
+      console.error('❌ Error saving printer:', error);
+      toast({
+        title: "Error al guardar",
+        description: "La impresora se conectó pero no se pudo guardar la configuración",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDisconnectThermalPrinter = async () => {
     const { thermalPrinter } = await import('@/utils/thermalPrinter');
     await thermalPrinter.disconnect();
 
+    // Actualizar estado local
     setPrintSettings(prev => ({
       ...prev,
       thermalPrinterConnected: false,
       thermalPrinterName: '',
     }));
 
-    toast({
-      title: "Desconectado",
-      description: "Impresora térmica desconectada",
-    });
+    // Guardar en la base de datos
+    try {
+      await updateStoreSettings({
+        thermal_printer_name: null,
+        use_thermal_printer: false,
+      });
+
+      toast({
+        title: "Desconectado",
+        description: "Impresora térmica desconectada y configuración guardada",
+      });
+    } catch (error) {
+      console.error('Error saving disconnection:', error);
+      toast({
+        title: "Desconectado",
+        description: "Impresora térmica desconectada (pero hubo un error al guardar)",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleThermalTestPrint = async () => {
-    const { thermalPrinter } = await import('@/utils/thermalPrinter');
-
-    if (!thermalPrinter.isConnected()) {
-      toast({
-        title: "Error",
-        description: "Impresora no conectada",
-        variant: "destructive",
-      });
-      return;
-    }
+    const { handlePrint, injectPrintStyles, markContentAsPrintable } = await import('@/utils/printHandler');
+    const { generateCleanInvoiceHTML } = await import('@/utils/generateCleanInvoiceHTML');
+    const JsBarcode = (await import('jsbarcode')).default;
 
     toast({
       title: "Imprimiendo...",
-      description: "Enviando prueba a la impresora térmica",
+      description: "Enviando factura de prueba...",
     });
 
-    const result = await thermalPrinter.printTest(printSettings.paperSize as "50mm" | "80mm");
+    try {
+      // Generate barcode if needed
+      let barcodeDataUrl: string | undefined;
+      if (invoiceSettings.showBarcode) {
+        try {
+          const canvas = document.createElement('canvas');
+          JsBarcode(canvas, 'B0200000001', {
+            format: "CODE128",
+            width: 2,
+            height: 50,
+            displayValue: true,
+            fontSize: 12,
+            margin: 5
+          });
+          barcodeDataUrl = canvas.toDataURL();
+        } catch (error) {
+          console.error('Error generating barcode:', error);
+        }
+      }
 
-    if (result.success) {
+      // Ensure styles are injected
+      injectPrintStyles();
+
+      // Determine format from settings
+      let format: '80mm' | '58mm' | 'A4' = '80mm';
+      if (printSettings.paperSize === '50mm' || printSettings.paperSize === '58mm') {
+        format = '58mm';
+      } else if (printSettings.paperSize === 'A4' || printSettings.paperSize === 'carta') {
+        format = 'A4';
+      }
+
+      // Generate test invoice HTML using EXACT same structure as preview
+      const htmlContent = generateCleanInvoiceHTML(
+        {
+          name: companyInfo.name,
+          logo: companyInfo.logo,
+          logoSize: companyInfo.logoSize || 120,
+          rnc: companyInfo.rnc,
+          phone: companyInfo.phone,
+          address: companyInfo.address,
+          pageMargin: printSettings.pageMargin,
+          containerPadding: printSettings.containerPadding,
+          logoMarginBottom: printSettings.logoMarginBottom,
+          fontSize: printSettings.fontSize, // Added font size
+        },
+        {
+          invoiceNumber: 'B0200000001',
+          invoicePrefix: 'B02',
+          date: new Date(),
+          items: [
+            { name: 'Producto Ejemplo', quantity: 1, price: 100.00, total: 100.00 },
+            { name: 'Servicio Ejemplo', quantity: 2, price: 75.00, total: 150.00 }
+          ],
+          subtotal: 250.00,
+          tax: 45.00,
+          taxRate: 18,
+          total: 295.00,
+          currency: invoiceSettings.currency || 'DOP',
+          paymentTerms: invoiceSettings.paymentTerms,
+          footerText: invoiceSettings.footerText,
+          showBarcode: invoiceSettings.showBarcode,
+          barcodeDataUrl: barcodeDataUrl,
+        }
+      );
+
+      // Create print container
+      let printContainer = document.getElementById('temp-print-container');
+      if (!printContainer) {
+        printContainer = document.createElement('div');
+        printContainer.id = 'temp-print-container';
+        document.body.appendChild(printContainer);
+      }
+
+      printContainer.innerHTML = htmlContent;
+      markContentAsPrintable('temp-print-container');
+
+      await handlePrint(format);
+
+      // Clean up
+      if (printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
+      }
+
       toast({
         title: "Impresión exitosa",
-        description: "La prueba se imprimió correctamente",
+        description: "La factura de prueba ha sido enviada.",
+        duration: 3000,
       });
-    } else {
+    } catch (error: any) {
+      console.error("Error printing test invoice:", error);
       toast({
         title: "Error",
-        description: result.error || "Error al imprimir",
+        description: error.message || "Error al imprimir",
         variant: "destructive",
       });
     }
@@ -1566,7 +1771,7 @@ const Settings = () => {
 
                 {logoPreview ? (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-center w-full max-w-xs h-32 border-2 border-dashed border-border rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-center w-full max-w-xs p-4 border-2 border-dashed border-border rounded-lg bg-muted/50">
                       <img
                         src={logoPreview}
                         alt="Logo preview"
@@ -1649,8 +1854,13 @@ const Settings = () => {
                   className="hidden"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Formatos soportados: JPG, PNG. Tamaño máximo: 2MB
+                  Formatos soportados: JPG, PNG. Tamaño máximo: 2MB. Recomendado: 500px ancho (PNG).
                 </p>
+                {logoUploadError && (
+                  <p className="text-sm text-red-500 font-medium mt-1">
+                    Error: {logoUploadError}
+                  </p>
+                )}
               </div>
               <Button onClick={() => handleSaveSettings('empresa')} disabled={loading || isUpdating || isUploadingLogo}>
                 <Save className="mr-2 h-4 w-4" />
@@ -1674,107 +1884,348 @@ const Settings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Layout de 2 columnas: Formulario + Vista Previa */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Moneda</Label>
-                    <Select value={invoiceSettings.currency} onValueChange={(value) => setInvoiceSettings({ ...invoiceSettings, currency: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DOP">Peso Dominicano (DOP)</SelectItem>
-                        <SelectItem value="USD">Dólar Americano (USD)</SelectItem>
-                        <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Columna izquierda: Formulario */}
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="currency">Moneda</Label>
+                        <Select value={invoiceSettings.currency} onValueChange={(value) => setInvoiceSettings({ ...invoiceSettings, currency: value })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="DOP">Peso Dominicano (DOP)</SelectItem>
+                            <SelectItem value="USD">Dólar Americano (USD)</SelectItem>
+                            <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="logo-size">Tamaño del Logo (px)</Label>
+                        <Input
+                          id="logo-size"
+                          type="number"
+                          min="40"
+                          max="200"
+                          value={companyInfo.logoSize}
+                          onChange={(e) => setCompanyInfo({ ...companyInfo, logoSize: parseInt(e.target.value) || 120 })}
+                        />
+                        <Label htmlFor="logo-size">Tamaño del Logo (px)</Label>
+                        <Input
+                          id="logo-size"
+                          type="number"
+                          min="40"
+                          max="200"
+                          value={companyInfo.logoSize}
+                          onChange={(e) => setCompanyInfo({ ...companyInfo, logoSize: parseInt(e.target.value) || 120 })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="font-size">Tamaño de Fuente (px)</Label>
+                        <div className="flex items-center gap-4">
+                          <Input
+                            id="font-size"
+                            type="number"
+                            min="8"
+                            max="24"
+                            value={printSettings.fontSize || 12}
+                            onChange={(e) => setPrintSettings({ ...printSettings, fontSize: parseInt(e.target.value) || 12 })}
+                            className="w-20"
+                          />
+                          <input
+                            type="range"
+                            min="8"
+                            max="24"
+                            step="1"
+                            value={printSettings.fontSize || 12}
+                            onChange={(e) => setPrintSettings({ ...printSettings, fontSize: parseInt(e.target.value) || 12 })}
+                            className="flex-1 cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Ajusta el tamaño base de la letra en la factura.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="logo-margin-top-invoice">Margen Logo (Superior)</Label>
+                        <Select
+                          value={printSettings.logoMarginTop || '6px'}
+                          onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginTop: value })}
+                        >
+                          <SelectTrigger id="logo-margin-top-invoice">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0px">Sin espacio (0px)</SelectItem>
+                            <SelectItem value="2px">Muy pequeño (2px)</SelectItem>
+                            <SelectItem value="4px">Pequeño (4px)</SelectItem>
+                            <SelectItem value="6px">Normal (6px)</SelectItem>
+                            <SelectItem value="8px">Medio (8px)</SelectItem>
+                            <SelectItem value="12px">Grande (12px)</SelectItem>
+                            <SelectItem value="16px">Muy grande (16px)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Espacio arriba del logo
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="logo-margin-invoice">Margen Logo (Inferior)</Label>
+                        <Select
+                          value={printSettings.logoMarginBottom || '6px'}
+                          onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginBottom: value })}
+                        >
+                          <SelectTrigger id="logo-margin-invoice">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0px">Sin espacio (0px)</SelectItem>
+                            <SelectItem value="2px">Muy pequeño (2px)</SelectItem>
+                            <SelectItem value="4px">Pequeño (4px)</SelectItem>
+                            <SelectItem value="6px">Normal (6px)</SelectItem>
+                            <SelectItem value="8px">Medio (8px)</SelectItem>
+                            <SelectItem value="12px">Grande (12px)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex flex-col justify-center space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="logo-width"
+                            checked={printSettings.logoWidth === 'full'}
+                            onCheckedChange={(checked) => setPrintSettings({ ...printSettings, logoWidth: checked ? 'full' : 'auto' })}
+                          />
+                          <Label htmlFor="logo-width">Ajustar al Ancho Completo</Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Expande el logo a todo el ancho del papel, ignorando la altura fija.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Mostrar Código de Barras NCF</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Muestra el código de barras del NCF al final de la factura
+                        </p>
+                      </div>
+                      <Switch
+                        checked={invoiceSettings.showBarcode || false}
+                        onCheckedChange={(checked) => setInvoiceSettings({ ...invoiceSettings, showBarcode: checked })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Auto-incrementar Numeración</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Incrementar automáticamente el número de factura
+                        </p>
+                      </div>
+                      <Switch
+                        checked={invoiceSettings.autoIncrement}
+                        onCheckedChange={(checked) => setInvoiceSettings({ ...invoiceSettings, autoIncrement: checked })}
+                      />
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tax-rate">Tasa de Impuesto (%)</Label>
+                        <Input
+                          id="tax-rate"
+                          type="number"
+                          value={invoiceSettings.defaultTaxRate}
+                          onChange={(e) => setInvoiceSettings({ ...invoiceSettings, defaultTaxRate: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="payment-terms">Términos de Pago (días)</Label>
+                        <Input
+                          id="payment-terms"
+                          type="number"
+                          value={invoiceSettings.paymentTerms}
+                          onChange={(e) => setInvoiceSettings({ ...invoiceSettings, paymentTerms: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="footer-text">Texto del Pie de Página</Label>
+                      <Textarea
+                        id="footer-text"
+                        value={invoiceSettings.footerText}
+                        onChange={(e) => setInvoiceSettings({ ...invoiceSettings, footerText: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+
+                    <Separator className="my-6" />
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold flex items-center">
+                        <Mail className="mr-2 h-5 w-5" />
+                        Configuración de Email Personalizado
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Personaliza el saludo y el mensaje que reciben tus clientes al enviar una factura por correo.
+                      </p>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="email-greeting">Saludo del Email</Label>
+                        <Input
+                          id="email-greeting"
+                          placeholder="Ej: ¡Hola!"
+                          value={invoiceSettings.emailGreeting}
+                          onChange={(e) => setInvoiceSettings({ ...invoiceSettings, emailGreeting: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="email-message">Mensaje del Email</Label>
+                        <Textarea
+                          id="email-message"
+                          placeholder="Escribe el mensaje de agradecimiento..."
+                          value={invoiceSettings.emailMessage}
+                          onChange={(e) => setInvoiceSettings({ ...invoiceSettings, emailMessage: e.target.value })}
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <Button onClick={() => handleSaveSettings('facturas')} disabled={loading || isUpdatingStoreSettings}>
+                        <Save className="mr-2 h-4 w-4" />
+                        Guardar Configuración de Facturas
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Auto-incrementar Numeración</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Incrementar automáticamente el número de factura
-                    </p>
+                  {/* Columna derecha: Vista Previa */}
+                  <div className="lg:sticky lg:top-6 h-fit">
+                    <div className="border rounded-lg p-6 bg-white dark:bg-gray-900 shadow-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-lg">Vista Previa del Recibo</h3>
+                        <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">EN VIVO</span>
+                      </div>
+
+                      {/* Simulación del recibo - Fondo BLANCO PURO (Simulación papel) - Dynamic Font Size */}
+                      <div className="border border-gray-200 p-2 space-y-1 max-w-md mx-auto shadow-sm" style={{ backgroundColor: '#ffffff', color: '#000000', fontSize: `${printSettings.fontSize || 12}px`, lineHeight: '1.2' }}>
+                        {/* Logo */}
+                        {companyInfo.logo && (
+                          <div className="text-center" style={{ marginTop: printSettings.logoMarginTop, marginBottom: printSettings.logoMarginBottom }}>
+                            <img
+                              src={companyInfo.logo}
+                              alt="Logo"
+                              className="mx-auto w-auto object-contain grayscale"
+                              style={{
+                                maxHeight: printSettings.logoWidth === 'full' ? 'none' : `${companyInfo.logoSize}px`,
+                                width: printSettings.logoWidth === 'full' ? '100%' : 'auto',
+                                height: 'auto',
+                                maxWidth: '100%'
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Header */}
+                        <div className="text-center border-b border-black pb-1 mb-1">
+                          <h2 className="font-bold mb-1" style={{ color: '#000', fontSize: '1.25em' }}>{companyInfo.name}</h2>
+                          {companyInfo.rnc && <p className="leading-tight" style={{ color: '#000', fontSize: '0.9em' }}>RNC: {companyInfo.rnc}</p>}
+                          {companyInfo.phone && <p className="leading-tight" style={{ color: '#000', fontSize: '0.9em' }}>{companyInfo.phone}</p>}
+                          {companyInfo.address && <p className="leading-tight" style={{ color: '#000', fontSize: '0.9em' }}>{companyInfo.address}</p>}
+                        </div>
+
+                        {/* Número de factura - Solo NCF */}
+                        {/* Número de factura - Solo NCF */}
+                        <div className="text-center py-1 border-b border-black mb-1">
+                          <p className="font-bold leading-none" style={{ color: '#000', fontSize: '1.1em' }}>NCF</p>
+                          <p className="font-mono font-bold leading-tight" style={{ color: '#000', fontSize: '1em' }}>B0200000001</p>
+                          <p className="leading-tight" style={{ color: '#000', fontSize: '0.9em' }}>{new Date().toLocaleDateString('es-DO')}</p>
+                        </div>
+
+                        {/* Items ejemplo */}
+                        {/* Items ejemplo */}
+                        {/* Items ejemplo */}
+                        <div className="border-t border-b border-black py-1 space-y-0.5 mb-1">
+                          <div className="flex justify-between" style={{ fontSize: '0.9em' }}>
+                            <span style={{ color: '#000' }}>Producto Ejemplo x1</span>
+                            <span className="font-mono" style={{ color: '#000' }}>{invoiceSettings.currency} 100.00</span>
+                          </div>
+                          <div className="flex justify-between" style={{ fontSize: '0.9em' }}>
+                            <span style={{ color: '#000' }}>Servicio Ejemplo x2</span>
+                            <span className="font-mono" style={{ color: '#000' }}>{invoiceSettings.currency} 150.00</span>
+                          </div>
+                        </div>
+
+                        {/* Totales */}
+                        <div className="space-y-0.5 mb-1">
+                          <div className="flex justify-between" style={{ fontSize: '0.9em' }}>
+                            <span style={{ color: '#000' }}>Subtotal:</span>
+                            <span className="font-mono" style={{ color: '#000' }}>{invoiceSettings.currency} 250.00</span>
+                          </div>
+                          <div className="flex justify-between" style={{ fontSize: '0.9em' }}>
+                            <span style={{ color: '#000' }}>ITBIS ({invoiceSettings.defaultTaxRate}%):</span>
+                            <span className="font-mono" style={{ color: '#000' }}>{invoiceSettings.currency} {(250 * parseFloat(invoiceSettings.defaultTaxRate || '0') / 100).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between font-bold border-t border-black pt-2 mt-1" style={{ fontSize: '1.1em' }}>
+                            <span style={{ color: '#000' }}>TOTAL:</span>
+                            <span className="font-mono" style={{ color: '#000' }}>{invoiceSettings.currency} {(250 * (1 + parseFloat(invoiceSettings.defaultTaxRate || '0') / 100)).toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        {invoiceSettings.footerText && (
+                          <div className="text-center border-t border-black pt-2 mt-3" style={{ fontSize: '0.9em' }}>
+                            <p style={{ color: '#000' }}>{invoiceSettings.footerText}</p>
+                          </div>
+                        )}
+
+                        {/* Términos de pago */}
+                        {invoiceSettings.paymentTerms && (
+                          <div className="text-center text-[10px] pt-2">
+                            <p style={{ color: '#666' }}>Términos de pago: {invoiceSettings.paymentTerms} días</p>
+                          </div>
+                        )}
+
+                        {/* Código de Barras */}
+                        {invoiceSettings.showBarcode && (
+                          <div className="text-center pt-3 mt-3 border-t border-dashed" style={{ borderColor: '#000' }}>
+                            <div className="bg-white p-2 inline-block">
+                              <svg width="200" height="50" className="mx-auto">
+                                <rect width="200" height="50" fill="white" />
+                                {/* Simulación de código de barras */}
+                                {[...Array(20)].map((_, i) => (
+                                  <rect
+                                    key={i}
+                                    x={10 + i * 9}
+                                    y="5"
+                                    width={Math.random() > 0.5 ? 3 : 2}
+                                    height="35"
+                                    fill="black"
+                                  />
+                                ))}
+                                <text x="100" y="48" fontSize="8" textAnchor="middle" fill="black">B0200000001</text>
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center mt-4">
+                        ✨ Los cambios se reflejan automáticamente
+                      </p>
+                    </div>
                   </div>
-                  <Switch
-                    checked={invoiceSettings.autoIncrement}
-                    onCheckedChange={(checked) => setInvoiceSettings({ ...invoiceSettings, autoIncrement: checked })}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tax-rate">Tasa de Impuesto (%)</Label>
-                    <Input
-                      id="tax-rate"
-                      type="number"
-                      value={invoiceSettings.defaultTaxRate}
-                      onChange={(e) => setInvoiceSettings({ ...invoiceSettings, defaultTaxRate: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-terms">Términos de Pago (días)</Label>
-                    <Input
-                      id="payment-terms"
-                      type="number"
-                      value={invoiceSettings.paymentTerms}
-                      onChange={(e) => setInvoiceSettings({ ...invoiceSettings, paymentTerms: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="footer-text">Texto del Pie de Página</Label>
-                  <Textarea
-                    id="footer-text"
-                    value={invoiceSettings.footerText}
-                    onChange={(e) => setInvoiceSettings({ ...invoiceSettings, footerText: e.target.value })}
-                    rows={2}
-                  />
-                </div>
-
-                <Separator className="my-6" />
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center">
-                    <Mail className="mr-2 h-5 w-5" />
-                    Configuración de Email Personalizado
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Personaliza el saludo y el mensaje que reciben tus clientes al enviar una factura por correo.
-                  </p>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email-greeting">Saludo del Email</Label>
-                    <Input
-                      id="email-greeting"
-                      placeholder="Ej: ¡Hola!"
-                      value={invoiceSettings.emailGreeting}
-                      onChange={(e) => setInvoiceSettings({ ...invoiceSettings, emailGreeting: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email-message">Mensaje del Email</Label>
-                    <Textarea
-                      id="email-message"
-                      placeholder="Escribe el mensaje de agradecimiento..."
-                      value={invoiceSettings.emailMessage}
-                      onChange={(e) => setInvoiceSettings({ ...invoiceSettings, emailMessage: e.target.value })}
-                      rows={4}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <Button onClick={() => handleSaveSettings('facturas')} disabled={loading || isUpdatingStoreSettings}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Guardar Configuración de Facturas
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -2148,6 +2599,75 @@ const Settings = () => {
                   <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3">
                     <p className="text-xs text-blue-600 dark:text-blue-400">
                       💡 <span className="font-semibold">Importante:</span> Esta configuración se aplica a "Imprimir directamente" en el POS. Para impresoras térmicas como 2connet 2C-POS80, selecciona <strong>80mm</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="page-margin">Margen de Página</Label>
+                    <Select
+                      value={printSettings.pageMargin}
+                      onValueChange={(value) => setPrintSettings({ ...printSettings, pageMargin: value })}
+                    >
+                      <SelectTrigger id="page-margin">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0mm">Sin margen (0mm)</SelectItem>
+                        <SelectItem value="2mm">Pequeño (2mm)</SelectItem>
+                        <SelectItem value="4mm">Medio (4mm)</SelectItem>
+                        <SelectItem value="6mm">Grande (6mm)</SelectItem>
+                        <SelectItem value="8mm">Muy grande (8mm)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Espacio alrededor del recibo completo
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="container-padding">Padding Interno</Label>
+                    <Select
+                      value={printSettings.containerPadding}
+                      onValueChange={(value) => setPrintSettings({ ...printSettings, containerPadding: value })}
+                    >
+                      <SelectTrigger id="container-padding">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0px">Sin padding (0px)</SelectItem>
+                        <SelectItem value="4px">Pequeño (4px)</SelectItem>
+                        <SelectItem value="8px">Medio (8px)</SelectItem>
+                        <SelectItem value="12px">Grande (12px)</SelectItem>
+                        <SelectItem value="16px">Muy grande (16px)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Espacio interno del contenido
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="logo-margin-bottom">Margen Logo (Inferior)</Label>
+                    <Select
+                      value={printSettings.logoMarginBottom}
+                      onValueChange={(value) => setPrintSettings({ ...printSettings, logoMarginBottom: value })}
+                    >
+                      <SelectTrigger id="logo-margin-bottom">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0px">Sin espacio (0px)</SelectItem>
+                        <SelectItem value="2px">Muy pequeño (2px)</SelectItem>
+                        <SelectItem value="4px">Pequeño (4px)</SelectItem>
+                        <SelectItem value="6px">Normal (6px)</SelectItem>
+                        <SelectItem value="8px">Medio (8px)</SelectItem>
+                        <SelectItem value="12px">Grande (12px)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Espacio entre el logo y el texto debajo
                     </p>
                   </div>
                 </div>

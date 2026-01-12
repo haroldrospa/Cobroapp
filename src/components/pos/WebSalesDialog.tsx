@@ -31,7 +31,7 @@ const WebSalesDialog: React.FC<WebSalesDialogProps> = ({ isOpen, onClose, onLoad
   const isMobile = useIsMobile();
   const { data: userStore } = useUserStore();
 
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, isFetching } = useQuery({
     queryKey: ['web-orders', userStore?.id],
     queryFn: async () => {
       if (!userStore?.id) return [];
@@ -56,12 +56,16 @@ const WebSalesDialog: React.FC<WebSalesDialogProps> = ({ isOpen, onClose, onLoad
         .eq('source', 'web')
         .eq('order_status', 'pending')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(20);  // Reduced from 50 to 20 for faster loading
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: isOpen && !!userStore?.id,
+    staleTime: 10000,           // Consider data fresh for 10 seconds
+    gcTime: 5 * 60 * 1000,      // Keep in cache for 5 minutes  
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnMount: true,        // Always fetch on mount for latest data
   });
 
   // Filter out the currently loaded order
@@ -166,8 +170,8 @@ const WebSalesDialog: React.FC<WebSalesDialogProps> = ({ isOpen, onClose, onLoad
     <Card
       key={order.id}
       className={`cursor-pointer transition-all ${selectedOrderId === order.id
-          ? 'ring-2 ring-primary bg-primary/5'
-          : 'hover:bg-muted/50'
+        ? 'ring-2 ring-primary bg-primary/5'
+        : 'hover:bg-muted/50'
         } ${order.order_status === 'completed' ? 'opacity-60' : ''}`}
       onClick={() => setSelectedOrderId(order.id)}
       onDoubleClick={() => handleRowDoubleClick(order)}
@@ -253,8 +257,8 @@ const WebSalesDialog: React.FC<WebSalesDialogProps> = ({ isOpen, onClose, onLoad
           <TableRow
             key={order.id}
             className={`cursor-pointer transition-colors ${selectedOrderId === order.id
-                ? 'bg-primary/10 hover:bg-primary/15'
-                : 'hover:bg-muted/50'
+              ? 'bg-primary/10 hover:bg-primary/15'
+              : 'hover:bg-muted/50'
               } ${order.order_status === 'completed' ? 'opacity-60' : ''}`}
             onClick={() => setSelectedOrderId(order.id)}
             onDoubleClick={() => handleRowDoubleClick(order)}

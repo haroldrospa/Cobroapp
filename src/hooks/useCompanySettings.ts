@@ -125,7 +125,8 @@ export const useCompanySettings = () => {
       if (!userStore?.id) throw new Error('No store');
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userStore.id}/logo.${fileExt}`;
+      // Add timestamp to filename to prevent caching issues and ensure unique URL
+      const fileName = `${userStore.id}/logo-${Date.now()}.${fileExt}`;
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage

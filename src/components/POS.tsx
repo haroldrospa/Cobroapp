@@ -295,12 +295,12 @@ const POS: React.FC = () => {
       setShowPrintOptionsDialog(true);
       setCurrentOrderInfo(null);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing sale:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Error al procesar la venta. Inténtalo de nuevo.",
+        description: error.message || "Error al procesar la venta. Inténtalo de nuevo.",
       });
     }
   };

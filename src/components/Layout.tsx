@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, Users, FileText, BarChart, Settings, Menu, ChevronDown, LogOut, Store, User, Briefcase } from 'lucide-react';
+import { Home, ShoppingCart, Package, Users, FileText, BarChart, Settings, Menu, ChevronDown, LogOut, Store, User, Briefcase, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';

@@ -13,6 +13,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { PrinterSelectionDialog } from './PrinterSelectionDialog';
+import { generateCleanInvoiceHTML } from '@/utils/generateCleanInvoiceHTML';
 
 interface PrintOptionsDialogProps {
   isOpen: boolean;
@@ -131,31 +132,31 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
               padding: 0;
             }
             @page { 
-              size: ${styles.pageSize}; 
+              size: ${paperSize === '80mm' || paperSize === '50mm' ? 'auto' : styles.pageSize}; 
               margin: 0mm; 
             }
             @media print {
               html, body { 
                 width: ${paperSize === 'A4' || paperSize === 'carta' ? '100%' : styles.width};
-                height: 100%;
-                margin: 0 auto;
+                margin: 0;
                 padding: 0;
               }
               body {
-                padding: ${paperSize === 'A4' || paperSize === 'carta' ? '10mm' : '2mm'};
+                padding: ${paperSize === 'A4' || paperSize === 'carta' ? '10mm' : '0'};
+                padding-bottom: ${paperSize === 'A4' || paperSize === 'carta' ? '10mm' : '5mm'};
               }
             }
             @media screen {
               body { background: #f0f0f0; padding: 20px; }
             }
             .invoice-container {
-              font-family: Arial, sans-serif; 
+              font-family: 'Courier New', Courier, monospace; 
               width: ${styles.width}; 
               max-width: ${styles.width};
-              margin: 0 auto; 
+              margin: ${paperSize === 'A4' || paperSize === 'carta' ? '0 auto' : '0'}; 
               font-size: ${styles.fontSize}; 
-              line-height: 1.4; 
-              padding: 5mm;
+              line-height: 1.2; 
+              padding: ${paperSize === 'A4' || paperSize === 'carta' ? '5mm' : '2mm'};
               background: white;
             }
             .header-section {
@@ -318,13 +319,94 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
   `;
   };
 
-  const handlePrinterTypeSelected = async (type: 'usb' | 'bluetooth' | 'browser') => {
-    if (type === 'usb' || type === 'bluetooth') {
-      // Use thermal printer
-      await handleThermalPrint();
-    } else {
-      // Use browser print
-      await executeBrowserPrint();
+  // NEW: Function to generate clean, black & white invoice using Settings preview design
+  const generateCleanInvoiceHTMLWrapper = () => {
+    const items = saleData.items || [];
+    const taxRate = parseFloat(storeSettings?.default_tax_rate?.toString() || '18');
+    const taxAmount = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0) || (saleData.total - (saleData.total / (1 + taxRate / 100)));
+    const subtotalAmount = saleData.total - taxAmount;
+
+    // Generate barcode if needed
+    const barcodeDataUrl = printSettings.showBarcode ? generateBarcode(invoiceNumber) : undefined;
+
+    return generateCleanInvoiceHTML(
+      {
+        name: dbCompanyInfo.name || 'Mi Empresa',
+        logo: dbCompanyInfo.logo,
+        logoSize: dbCompanyInfo.logoInvoiceSize || dbCompanyInfo.logoSize || 64,
+        rnc: dbCompanyInfo.rnc,
+        phone: dbCompanyInfo.phone,
+        address: dbCompanyInfo.address,
+        pageMargin: printSettings.pageMargin || '0mm',
+        containerPadding: printSettings.containerPadding || '4px',
+        logoMarginBottom: printSettings.logoMarginBottom || '6px',
+        fontSize: printSettings.fontSize, // Pass font size setting
+      },
+      {
+        invoiceNumber: invoiceNumber,
+        invoicePrefix: storeSettings?.invoice_prefix || 'FAC-',
+        date: new Date(),
+        items: items.map(item => ({
+          name: item.name || item.product?.name || 'Producto',
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+          total: item.total || (item.quantity * item.price) || 0,
+        })),
+        subtotal: subtotalAmount,
+        tax: taxAmount,
+        taxRate: taxRate,
+        total: saleData.total,
+        currency: storeSettings?.currency || 'DOP',
+        paymentTerms: storeSettings?.payment_terms?.toString(),
+        footerText: storeSettings?.invoice_footer_text,
+        showBarcode: printSettings.showBarcode || false,
+        barcodeDataUrl: barcodeDataUrl,
+      }
+    );
+  };
+
+
+
+  const handlePrinterTypeSelected = async (type: 'usb' | 'bluetooth' | 'browser' | 'system') => {
+    // CHANGED: Now ALL types use HTML for exact preview match
+    // Use browser print with new robust print handler
+    const { handlePrint, injectPrintStyles, markContentAsPrintable } = await import('@/utils/printHandler');
+
+    // Ensure styles are injected
+    injectPrintStyles();
+
+    // Determine format from settings
+    let format: '80mm' | '58mm' | 'A4' = '80mm';
+    if (printSettings.paperSize === '50mm' || printSettings.paperSize === '58mm') {
+      format = '58mm'; // Mapped to 58mm class
+    } else if (printSettings.paperSize === 'A4' || printSettings.paperSize === 'carta') {
+      format = 'A4';
+    }
+
+    // Use the NEW clean invoice design (matches Settings preview EXACTLY)
+    const htmlContent = generateCleanInvoiceHTMLWrapper();
+
+    // Create a dedicated print container
+    let printContainer = document.getElementById('temp-print-container');
+    if (!printContainer) {
+      printContainer = document.createElement('div');
+      printContainer.id = 'temp-print-container';
+      document.body.appendChild(printContainer);
+    }
+
+    // Inject the generated HTML
+    printContainer.innerHTML = htmlContent;
+
+    // Mark as printable
+    markContentAsPrintable('temp-print-container');
+
+    try {
+      await handlePrint(format);
+    } finally {
+      // Clean up
+      if (printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
+      }
     }
   };
 
@@ -335,9 +417,12 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
     // Generate barcode for invoice number
     const barcodeDataUrl = generateBarcode(invoiceNumber);
 
-    // Function to create and print content
+    // Function to create and print content using the UNIFIED clean design
     const createPrintContent = (logoDataUrl: string) => {
-      return generateInvoiceHTML(companyInfo, logoDataUrl, barcodeDataUrl);
+      // We ignore logoDataUrl argument here because generateCleanInvoiceHTMLWrapper 
+      // already uses the logo from dbCompanyInfo internally.
+      // This ensures exact consistency with the other print methods.
+      return generateCleanInvoiceHTMLWrapper();
     };
 
     // Function to execute print using iframe (more reliable than popup)
@@ -426,17 +511,45 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
   };
 
   const handlePrintDirect = async () => {
-    // Use live dbCompanyInfo from the hook
-    const companyInfo = dbCompanyInfo;
+    // Check if there's a printer already configured in Settings
+    const hasPrinterConfigured = printSettings.useThermalPrinter && printSettings.thermalPrinterName;
 
-    const barcodeDataUrl = generateBarcode(invoiceNumber);
+    if (hasPrinterConfigured) {
+      // AUTO-PRINT: Printer is configured, print directly without showing dialog
+      console.log('🖨️ Auto-imprimiendo en:', printSettings.thermalPrinterName);
 
-    // Use the logo from companyInfo
-    const logoDataUrl = companyInfo.logo || '';
+      // Feedback immediate
+      toast({
+        title: "Imprimiendo...",
+        description: `Enviando a ${printSettings.thermalPrinterName}`,
+      });
 
-    const content = generateInvoiceHTML(companyInfo, logoDataUrl, barcodeDataUrl);
-    setInvoiceContentForPrint(content);
-    setShowPrinterSelection(true);
+      // CLOSE IMMEDIATELY - User request: "que no se me abra mas nada"
+      onClose();
+
+      // Use DIRECT USB printing (Web Serial) to bypass browser dialog
+      // This allows silent printing once permission is granted
+      handlePrinterTypeSelected('usb').then(() => {
+        console.log("Impresión directa enviada correctamente");
+      }).catch(err => {
+        console.error("Fallo la impresión USB directa:", err);
+        toast({
+          title: "Error de conexión USB",
+          description: "No se pudo conectar directamente a la impresora. Asegúrate de que esté conectada y hayas dado permiso en el navegador.",
+          variant: "destructive"
+        });
+      });
+
+    } else {
+      // NO PRINTER CONFIGURED: Show printer selection dialog
+      const companyInfo = dbCompanyInfo;
+      const barcodeDataUrl = generateBarcode(invoiceNumber);
+      const logoDataUrl = companyInfo.logo || '';
+      const content = generateInvoiceHTML(companyInfo, logoDataUrl, barcodeDataUrl);
+
+      setInvoiceContentForPrint(content);
+      setShowPrinterSelection(true);
+    }
   };
 
   const generateProfessionalPDF = (companyInfo: any) => {
@@ -707,14 +820,8 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
     try {
       const { thermalPrinter } = await import('@/utils/thermalPrinter');
 
-      if (!thermalPrinter.isConnected()) {
-        toast({
-          title: "Error",
-          description: "Impresora térmica no conectada. Ve a Configuración para conectarla.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Removed blocking check to allow auto-reconnect logic inside printInvoice
+      // if (!thermalPrinter.isConnected()) { ... }
 
       toast({
         title: "Imprimiendo...",
@@ -725,13 +832,32 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
       const companyInfo = dbCompanyInfo;
       const thermalPrintSettings = printSettings;
 
-      // Prepare invoice data
+      // Calculate totals from items correctly
+      const calculatedSubtotal = saleData.items.reduce((sum: number, item: any) => {
+        const itemPrice = item.price || 0;
+        const itemQty = item.quantity || 0;
+        return sum + (itemPrice * itemQty);
+      }, 0);
+
+      const calculatedTax = saleData.items.reduce((sum: number, item: any) => {
+        const itemTax = item.tax || 0;
+        const itemQty = item.quantity || 0;
+        return sum + (itemTax * itemQty);
+      }, 0);
+
+      // Prepare invoice data with properly formatted items
       const invoiceData = {
         companyInfo,
         invoiceNumber,
-        items: saleData.items,
-        subtotal: saleData.total - (saleData.items.reduce((sum, item) => sum + (item.tax_amount || 0), 0)),
-        tax: saleData.items.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
+        // Map items to ensure they have the expected structure
+        items: saleData.items.map((item: any) => ({
+          name: item.name || 'Producto',
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+          total: item.total || (item.price * item.quantity)
+        })),
+        subtotal: calculatedSubtotal,
+        tax: calculatedTax,
         total: saleData.total,
         customer: saleData.customer,
         paymentMethod: saleData.paymentMethod,

@@ -24,6 +24,7 @@ const BuscarTienda = lazy(() => import("./pages/BuscarTienda"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -81,6 +82,7 @@ const App = () => (
                         <Route path="/mi-tienda" element={<MiTienda />} />
                         <Route path="/accounting" element={<Accounting />} />
                         <Route path="/payroll" element={<Payroll />} />
+
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>

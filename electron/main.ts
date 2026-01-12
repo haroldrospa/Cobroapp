@@ -1,4 +1,4 @@
-import electron from 'electron'
+import electron, { ipcMain } from 'electron'
 const { app, BrowserWindow } = electron
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +23,8 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC || '', 'favicon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   })
 
@@ -38,6 +40,69 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
+
+// --- Native Printing Handlers ---
+
+ipcMain.handle('get-printers', async () => {
+  if (!win) return [];
+  try {
+    return await win.webContents.getPrintersAsync();
+  } catch (error) {
+    console.error('Error fetching printers:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('print-data', async (_event, options) => {
+  if (!win) return { success: false, error: 'No main window' };
+
+  const width = options.width || '80mm'; // Unused in pure print(), but good for context
+  const printerName = options.printerName;
+  const htmlContent = options.htmlContent;
+
+  try {
+    // Create a hidden window for printing
+    let printWin = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        nodeIntegration: true,
+      }
+    });
+
+    // Load the content
+    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+
+    // Wait for load
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Print
+    const printOptions: any = {
+      silent: true,
+      printBackground: true,
+      deviceName: printerName,
+    };
+
+    // Attempt to configure paper size? Electron printing API is limited here for custom sizes
+    // unless we use printToPDF then print. But simple printing often works if driver is set.
+
+    await printWin.webContents.print(printOptions, (success, errorType) => {
+      if (!success) {
+        console.error('Print failed:', errorType);
+      }
+    });
+
+    // Close and cleanup
+    // We wait a bit to ensure job is sent
+    setTimeout(() => {
+      printWin.close();
+    }, 5000);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Printing error:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

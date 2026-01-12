@@ -33,38 +33,90 @@ export const useCreateSale = () => {
         .eq('id', user.id)
         .maybeSingle();
 
-      // Generar número de factura secuencial usando la función de base de datos
-      const { data: invoiceNumber, error: invoiceError } = await supabase
-        .rpc('get_next_invoice_number', { invoice_type_code: saleData.invoice_type_id });
-
-      if (invoiceError) throw invoiceError;
-
-      // Crear la venta con store_id
-      const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert([{
-          invoice_number: invoiceNumber,
-          customer_id: saleData.customer_id || null,
-          invoice_type_id: saleData.invoice_type_id,
-          subtotal: saleData.subtotal,
-          discount_total: saleData.discount_total,
-          tax_total: saleData.tax_total,
-          total: saleData.total,
-          payment_method: saleData.payment_method,
-          amount_received: saleData.amount_received,
-          change_amount: saleData.change_amount,
-          payment_status: saleData.payment_status || 'paid',
-          due_date: saleData.due_date || null,
-          store_id: profile?.store_id || null,
-          profile_id: user.id
-        }])
-        .select(`
-          *,
-          profile:profiles(full_name)
-        `)
+      // 0. Obtener el CÓDIGO del tipo de factura (el RPC espera 'B01', 'B02', pero recibimos UUID)
+      const { data: invoiceTypeData, error: typeError } = await supabase
+        .from('invoice_types')
+        .select('code')
+        .eq('id', saleData.invoice_type_id)
         .single();
 
-      if (saleError) throw saleError;
+      if (typeError) {
+        // Fallback: Si no se encuentra por ID, quizás ya es el código?
+        // O si hay error, lanzamos
+        console.error("Error buscando tipo de factura:", typeError);
+        // No lanzamos error aquí para permitir intentar usar el ID como código si falla, 
+        // aunque lo ideal es que invoiceTypeData exista.
+      }
+
+      const invoiceTypeCode = invoiceTypeData?.code || saleData.invoice_type_id;
+      console.log('3. Código de factura a usar:', invoiceTypeCode);
+
+      let attempts = 0;
+      // START DEBUG: Increased from 3 to 50 to catch up sequence lag
+      const maxAttempts = 50;
+      let finalSale = null;
+
+      while (attempts < maxAttempts) {
+        attempts++;
+        try {
+          // Generar número de factura secuencial
+          console.log(`Intento ${attempts}: Generando número...`);
+          const { data: invoiceNumber, error: invoiceError } = await supabase
+            .rpc('get_next_invoice_number', { invoice_type_code: invoiceTypeCode });
+
+          if (invoiceError) {
+            console.error('Error RPC:', invoiceError);
+            throw new Error(`Error generando secuencia (Código: ${invoiceTypeCode}): ${invoiceError.message}`);
+          }
+
+          console.log('4. Número generado:', invoiceNumber);
+
+          // Crear la venta con store_id
+          const { data: sale, error: saleError } = await supabase
+            .from('sales')
+            .insert([{
+              invoice_number: invoiceNumber,
+              customer_id: saleData.customer_id || null,
+              invoice_type_id: saleData.invoice_type_id,
+              subtotal: saleData.subtotal,
+              discount_total: saleData.discount_total,
+              tax_total: saleData.tax_total,
+              total: saleData.total,
+              payment_method: saleData.payment_method,
+              amount_received: saleData.amount_received,
+              change_amount: saleData.change_amount,
+              payment_status: saleData.payment_status || 'paid',
+              due_date: saleData.due_date || null,
+              store_id: profile?.store_id || null,
+              profile_id: user.id
+            }])
+            .select(`
+              *,
+              profile:profiles(full_name)
+            `)
+            .single();
+
+          if (saleError) {
+            // Si el error es de duplicado, lanzamos para capturar y reintentar
+            if (saleError.code === '23505' || saleError.message.includes('unique constraint')) {
+              console.warn(`Número de factura ${invoiceNumber} duplicado. Reintentando...`);
+              continue; // Próxima iteración
+            }
+            throw saleError; // Otro error, fallar
+          }
+
+          finalSale = sale;
+          break; // Éxito! Salir del bucle
+
+        } catch (err: any) {
+          if (attempts === maxAttempts) throw err; // Si es el último intento, fallar
+          if (!err.message?.includes('duplicate') && !err.message?.includes('unique constraint')) throw err; // Si no es error de duplicado, fallar
+        }
+      }
+
+      if (!finalSale) throw new Error("No se pudo generar un número de factura único después de varios intentos.");
+
+      const sale = finalSale;
 
       // Crear los items de la venta
       // Calcular proporción del descuento global para cada item

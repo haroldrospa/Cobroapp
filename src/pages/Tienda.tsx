@@ -101,50 +101,174 @@ const Tienda: React.FC = () => {
   }, [profile, showCheckout]);
 
   /* -----------------------------------------------------------------------------------------------
-   * THEME ENGINE
+   * COMPREHENSIVE THEME ENGINE
    * ----------------------------------------------------------------------------------------------- */
   const storeSettings = Array.isArray(store?.store_settings)
     ? store?.store_settings?.[0]
     : store?.store_settings;
   const shopType = (storeSettings as any)?.shop_type || 'default';
 
-  const themeStyles = useMemo(() => {
-    // Default theme uses existing CSS variables
-    if (!shopType || shopType === 'default') return {};
-
-    const themes: Record<string, React.CSSProperties> = {
-      restaurant: {
-        '--primary': '25 95% 53%', // Vibrant Orange
+  // Complete theme configurations with design tokens
+  const themeConfigs = useMemo(() => ({
+    default: {
+      // PRESERVE EXACTLY - No CSS variable overrides
+      cssVars: {},
+      layout: { cardRadius: 'default', gridDensity: 'normal', spacing: 'default' },
+      typography: { fontFamily: 'inherit', headingWeight: '700' },
+      effects: { shadowIntensity: 'medium', borderStyle: 'solid' },
+      imageAspect: 'aspect-square',
+      cardPadding: 'p-3',
+      priceSize: 'text-lg'
+    },
+    restaurant: {
+      cssVars: {
+        '--primary': '16 100% 50%',        // Vibrant Red-Orange (appetizing)
         '--primary-foreground': '0 0% 100%',
-        '--secondary': '20 14% 4%',
-        '--secondary-foreground': '60 9.1% 97.8%',
-        '--accent': '12 6.5% 15.1%',
-        '--accent-foreground': '60 9.1% 97.8%',
-        '--radius': '1rem', // Rounder corners for friendly food vibe
+        '--secondary': '39 100% 50%',      // Golden Yellow
+        '--secondary-foreground': '0 0% 0%',
+        '--accent': '16 100% 45%',         // Deep Orange
+        '--accent-foreground': '0 0% 100%',
+        '--radius': '1.5rem',              // Very rounded
+        '--card': '0 0% 100%',
+        '--card-foreground': '20 14% 4%',
+        '--background': '30 40% 98%',      // Warm cream background
+        '--muted': '30 40% 96%',
+        '--muted-foreground': '30 10% 40%',
       } as React.CSSProperties,
-      fashion: {
-        '--primary': '0 0% 9%', // Elegant Black/Zinc
-        '--primary-foreground': '0 0% 98%',
-        '--secondary': '0 0% 96.1%',
-        '--secondary-foreground': '0 0% 9%',
-        '--muted': '0 0% 96.1%',
-        '--muted-foreground': '0 0% 45.1%',
-        '--radius': '0px', // Sharp corners for high fashion
+      layout: { cardRadius: 'xl', gridDensity: 'spacious', spacing: 'relaxed' },
+      typography: { fontFamily: "'Comfortaa', 'Inter', cursive", headingWeight: '700' },
+      effects: { shadowIntensity: 'mega', borderStyle: 'warm' },
+      imageAspect: 'aspect-[4/3]',  // Landscape for food photos
+      cardPadding: 'p-5',
+      priceSize: 'text-2xl'         // Large prices
+    },
+    fashion: {
+      cssVars: {
+        '--primary': '0 0% 0%',           // Pure Black
+        '--primary-foreground': '0 0% 100%',
+        '--secondary': '0 0% 98%',        // Almost white
+        '--secondary-foreground': '0 0% 0%',
+        '--muted': '0 0% 98%',
+        '--muted-foreground': '0 0% 35%', // Medium gray
+        '--radius': '0px',                // Perfectly sharp
+        '--card': '0 0% 100%',
+        '--card-foreground': '0 0% 0%',
+        '--background': '0 0% 100%',      // Pure white
+        '--border': '0 0% 90%',           // Very light gray borders
+        '--accent': '0 0% 5%',
+        '--accent-foreground': '0 0% 100%',
       } as React.CSSProperties,
-      supermarket: {
-        '--primary': '142 76% 36%', // Fresh Green
-        '--primary-foreground': '355.7 100% 97.3%',
-        '--radius': '0.5rem',
-      } as React.CSSProperties,
-      technology: {
-        '--primary': '221.2 83.2% 53.3%', // Tech Blue
-        '--primary-foreground': '210 40% 98%',
+      layout: { cardRadius: 'none', gridDensity: 'ultra-sparse', spacing: 'generous' },
+      typography: { fontFamily: "'Playfair Display', serif", headingWeight: '300' },
+      effects: { shadowIntensity: 'ultra-minimal', borderStyle: 'sharp' },
+      imageAspect: 'aspect-[3/4]',  // Portrait for clothing
+      cardPadding: 'p-6',
+      priceSize: 'text-sm'          // Subtle prices (luxury)
+    },
+    supermarket: {
+      cssVars: {
+        '--primary': '120 100% 30%',      // Deep Forest Green
+        '--primary-foreground': '0 0% 100%',
+        '--secondary': '55 100% 50%',     // Bright Yellow
+        '--secondary-foreground': '0 0% 0%',
         '--radius': '0.3rem',
-      } as React.CSSProperties
-    };
+        '--accent': '120 80% 45%',        // Fresh Green
+        '--card': '0 0% 100%',
+        '--background': '120 20% 98%',    // Light green tint
+        '--muted': '120 20% 95%',
+        '--border': '120 30% 85%',
+      } as React.CSSProperties,
+      layout: { cardRadius: 'sm', gridDensity: 'ultra-dense', spacing: 'compact' },
+      typography: { fontFamily: "'Roboto', 'Arial', sans-serif", headingWeight: '700' },
+      effects: { shadowIntensity: 'flat', borderStyle: 'solid' },
+      imageAspect: 'aspect-square',
+      cardPadding: 'p-2',
+      priceSize: 'text-xl font-black'   // Very visible prices
+    },
+    technology: {
+      cssVars: {
+        '--primary': '210 100% 55%',      // Cyan Blue (neon)
+        '--primary-foreground': '0 0% 100%',
+        '--secondary': '220 20% 15%',     // Dark steel
+        '--secondary-foreground': '210 100% 70%',
+        '--radius': '0.25rem',
+        '--background': '220 30% 8%',     // Very dark background
+        '--foreground': '210 100% 90%',   // Bright cyan text
+        '--card': '220 25% 12%',          // Dark cards
+        '--card-foreground': '210 100% 85%',
+        '--muted': '220 20% 18%',
+        '--muted-foreground': '210 60% 60%',
+        '--border': '210 80% 30%',        // Cyan borders
+        '--accent': '270 100% 60%',       // Purple accent
+        '--destructive': '0 100% 60%',
+      } as React.CSSProperties,
+      layout: { cardRadius: 'sm', gridDensity: 'normal', spacing: 'default' },
+      typography: { fontFamily: "'IBM Plex Mono', 'JetBrains Mono', monospace", headingWeight: '600' },
+      effects: { shadowIntensity: 'neon-glow', borderStyle: 'cyber' },
+      imageAspect: 'aspect-[16/9]',  // Widescreen
+      cardPadding: 'p-4',
+      priceSize: 'text-lg font-mono'
+    }
+  }), []);
 
-    return themes[shopType] || {};
-  }, [shopType]);
+  // Apply CSS variables from theme config
+  const themeStyles = useMemo(() => {
+    const config = themeConfigs[shopType as keyof typeof themeConfigs] || themeConfigs.default;
+    return config.cssVars;
+  }, [shopType, themeConfigs]);
+
+  // Computed theme classes for components - EXTREME DIFFERENTIATION
+  const themeClasses = useMemo(() => {
+    const config = themeConfigs[shopType as keyof typeof themeConfigs] || themeConfigs.default;
+
+    return {
+      // CARD STYLING - Dramatically different per theme
+      card: {
+        restaurant: `rounded-3xl shadow-2xl hover:shadow-[0_30px_60px_-15px_rgba(251,113,133,0.4)] border-4 border-red-100 bg-gradient-to-br from-white to-orange-50 transition-all duration-500 hover:scale-[1.02]`,
+        fashion: `rounded-none border-t border-l border-black/5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.04)] transition-all duration-700 bg-white`,
+        supermarket: `rounded border-2 border-green-200 shadow-sm hover:shadow-md bg-white transition-all duration-150 hover:border-green-400`,
+        technology: `rounded bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-cyan-500/30 shadow-[0_0_25px_rgba(34,211,238,0.15)] hover:shadow-[0_0_40px_rgba(34,211,238,0.3)] hover:border-cyan-400/50 transition-all duration-300`,
+        default: `shadow-md hover:shadow-lg transition-all duration-300`
+      }[shopType] || `shadow-md hover:shadow-lg transition-all duration-300`,
+
+      // BUTTON STYLING - Highly distinctive
+      button: {
+        restaurant: 'rounded-full font-bold px-8 py-3 text-base bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg hover:shadow-xl transform hover:scale-105',
+        fashion: 'rounded-none uppercase tracking-[0.2em] font-light px-12 py-2 text-xs border border-black hover:bg-black hover:text-white transition-all duration-500',
+        supermarket: 'rounded font-bold px-4 py-2 text-sm bg-green-600 hover:bg-green-700 shadow-md',
+        technology: 'rounded font-mono text-xs px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(34,211,238,0.5)] uppercase tracking-wider',
+        default: 'rounded-lg px-4'
+      }[shopType] || 'rounded-lg px-4',
+
+      // GRID LAYOUT - Extreme density differences
+      grid: {
+        restaurant: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',          // Very spacious
+        fashion: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12', // Ultra spacious
+        supermarket: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2', // Ultra dense
+        technology: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5',         // Balanced
+        default: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
+      }[shopType] || 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4',
+
+      imageAspect: config.imageAspect,
+      cardPadding: config.cardPadding,
+      priceSize: config.priceSize,
+
+      // Typography - MUCH MORE DISTINCT
+      heading: {
+        fontFamily: config.typography.fontFamily,
+        fontWeight: config.typography.headingWeight
+      },
+
+      // CONTAINER STYLING - Theme-specific backgrounds
+      pageBackground: {
+        restaurant: 'bg-gradient-to-b from-orange-50 via-white to-red-50',
+        fashion: 'bg-white',
+        supermarket: 'bg-gradient-to-b from-green-50 to-white',
+        technology: 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950',
+        default: 'bg-gradient-to-b from-background to-muted/20'
+      }[shopType] || 'bg-gradient-to-b from-background to-muted/20'
+    };
+  }, [shopType, themeConfigs]);
 
   const activeProducts = products.filter(p => (p.stock ?? 0) > 0);
   const settingsData = store?.company_settings;
@@ -360,7 +484,7 @@ const Tienda: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-b from-background to-muted/20 transition-colors duration-500"
+      className={`min-h-screen ${themeClasses.pageBackground} transition-colors duration-500`}
       style={themeStyles}
       data-theme={shopType}
     >
@@ -379,7 +503,7 @@ const Tienda: React.FC = () => {
               ) : (
                 <Store className="h-10 w-10 text-primary" />
               )}
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight">{storeName}</h1>
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight" style={{ fontFamily: themeClasses.heading.fontFamily, fontWeight: themeClasses.heading.fontWeight }}>{storeName}</h1>
             </div>
 
             {/* Search and Cart Row */}
@@ -573,12 +697,12 @@ const Tienda: React.FC = () => {
                 <Percent className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">¡Ofertas y Destacados!</h2>
+                <h2 className="text-xl font-bold" style={{ fontFamily: themeClasses.heading.fontFamily, fontWeight: themeClasses.heading.fontWeight }}>¡Ofertas y Destacados!</h2>
                 <p className="text-sm text-muted-foreground">Productos en promoción</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className={`grid ${themeClasses.grid}`}>
               {featuredProducts.map(product => {
                 const hasDiscount = isDiscountActive(product);
                 const discountedPrice = getDiscountedPrice(product);
@@ -586,11 +710,11 @@ const Tienda: React.FC = () => {
                 return (
                   <Card
                     key={product.id}
-                    className="group overflow-hidden border-2 border-destructive/30 bg-gradient-to-br from-destructive/5 to-orange-500/5 hover:border-destructive/50 transition-all hover:shadow-xl hover:-translate-y-1"
+                    className={`group overflow-hidden ${themeClasses.card} hover:-translate-y-1 ${hasDiscount ? 'border-destructive/30 bg-gradient-to-br from-destructive/5 to-orange-500/5' : ''}`}
                   >
                     <div className="relative">
                       {product.image_url ? (
-                        <div className="aspect-square overflow-hidden">
+                        <div className={`${themeClasses.imageAspect} overflow-hidden`}>
                           <img
                             src={product.image_url}
                             alt={product.name}
@@ -619,16 +743,16 @@ const Tienda: React.FC = () => {
                       )}
                     </div>
 
-                    <CardContent className="p-3">
+                    <CardContent className={themeClasses.cardPadding}>
                       <h3 className="font-semibold line-clamp-1 text-sm">{product.name}</h3>
                       <div className="mt-1">
                         {hasDiscount ? (
                           <div className="flex items-center gap-2">
                             <span className="text-sm line-through text-muted-foreground">${product.price.toFixed(2)}</span>
-                            <span className="text-xl font-bold text-destructive">${discountedPrice.toFixed(2)}</span>
+                            <span className={`${themeClasses.priceSize} font-bold text-destructive`}>${discountedPrice.toFixed(2)}</span>
                           </div>
                         ) : (
-                          <p className="text-xl font-bold text-primary">${product.price.toFixed(2)}</p>
+                          <p className={`${themeClasses.priceSize} font-bold text-primary`}>${product.price.toFixed(2)}</p>
                         )}
                       </div>
                     </CardContent>
@@ -636,7 +760,7 @@ const Tienda: React.FC = () => {
                     <CardFooter className="p-3 pt-0">
                       <Button
                         size="sm"
-                        className="w-full bg-gradient-to-r from-destructive to-orange-500 hover:from-destructive/90 hover:to-orange-600 text-white border-0"
+                        className={`w-full ${themeClasses.button} ${hasDiscount ? 'bg-gradient-to-r from-destructive to-orange-500 hover:from-destructive/90 hover:to-orange-600 text-white border-0' : ''}`}
                         onClick={() => addToCart(product)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
@@ -654,7 +778,7 @@ const Tienda: React.FC = () => {
         {/* Products Grid */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">
+            <h2 className="text-xl font-bold" style={{ fontFamily: themeClasses.heading.fontFamily, fontWeight: themeClasses.heading.fontWeight }}>
               {selectedCategory
                 ? categories.find(c => c.id === selectedCategory)?.name
                 : searchTerm
@@ -674,7 +798,7 @@ const Tienda: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className={`grid ${themeClasses.grid}`}>
               {filteredProducts.map(product => {
                 const hasDiscount = isDiscountActive(product);
                 const discountedPrice = getDiscountedPrice(product);
@@ -682,11 +806,11 @@ const Tienda: React.FC = () => {
                 return (
                   <Card
                     key={product.id}
-                    className={`group overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${hasDiscount ? 'border-destructive/30' : ''}`}
+                    className={`group overflow-hidden ${themeClasses.card} hover:-translate-y-1 ${hasDiscount ? 'border-destructive/30' : ''}`}
                   >
                     <div className="relative">
                       {product.image_url ? (
-                        <div className="aspect-square overflow-hidden bg-muted">
+                        <div className={`${themeClasses.imageAspect} overflow-hidden bg-muted`}>
                           <img
                             src={product.image_url}
                             alt={product.name}
@@ -694,7 +818,7 @@ const Tienda: React.FC = () => {
                           />
                         </div>
                       ) : (
-                        <div className="aspect-square bg-muted flex items-center justify-center">
+                        <div className={`${themeClasses.imageAspect} bg-muted flex items-center justify-center`}>
                           <Package className="h-10 w-10 text-muted-foreground" />
                         </div>
                       )}
@@ -713,7 +837,7 @@ const Tienda: React.FC = () => {
                       )}
                     </div>
 
-                    <CardContent className="p-3">
+                    <CardContent className={themeClasses.cardPadding}>
                       <div className="space-y-1">
                         <h3 className="font-semibold line-clamp-2 text-sm leading-tight min-h-[2.5rem]">{product.name}</h3>
                         {product.category && (
@@ -724,10 +848,10 @@ const Tienda: React.FC = () => {
                         {hasDiscount ? (
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm line-through text-muted-foreground">${product.price.toFixed(2)}</span>
-                            <span className="text-lg font-bold text-destructive">${discountedPrice.toFixed(2)}</span>
+                            <span className={`${themeClasses.priceSize} font-bold text-destructive`}>${discountedPrice.toFixed(2)}</span>
                           </div>
                         ) : (
-                          <p className="text-lg font-bold text-primary">${product.price.toFixed(2)}</p>
+                          <p className={`${themeClasses.priceSize} font-bold text-primary`}>${product.price.toFixed(2)}</p>
                         )}
                       </div>
                     </CardContent>
@@ -735,7 +859,7 @@ const Tienda: React.FC = () => {
                     <CardFooter className="p-3 pt-0">
                       <Button
                         size="sm"
-                        className={`w-full ${hasDiscount ? 'bg-destructive hover:bg-destructive/90' : ''}`}
+                        className={`w-full ${themeClasses.button} ${hasDiscount ? 'bg-destructive hover:bg-destructive/90' : ''}`}
                         onClick={() => addToCart(product)}
                         disabled={(product.stock ?? 0) <= 0}
                       >

@@ -40,6 +40,11 @@ export type StoreSettings = {
   paper_size: string;
   use_thermal_printer: boolean;
   thermal_printer_name: string | null;
+  show_barcode?: boolean; // NEW: Show barcode on invoice
+  logo_margin_top?: string;
+  logo_margin_bottom?: string;
+  logo_width?: string;
+  invoice_font_size?: number; // Tamaño de fuente para la factura
 
   // Web Orders
   web_order_sound_enabled: boolean;
@@ -118,6 +123,9 @@ export const useStoreSettings = () => {
         timezone: 'America/Santo_Domingo',
         paper_size: '80mm',
         use_thermal_printer: false,
+        thermal_printer_name: null,
+        show_barcode: false, // Default: barcode disabled
+        invoice_font_size: 12, // Default font size
         web_order_sound_enabled: true,
         web_order_sound_type: 'chime',
         web_order_sound_volume: 0.7,

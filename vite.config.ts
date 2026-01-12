@@ -14,7 +14,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    /*
     electron({
       main: {
         entry: 'electron/main.ts',
@@ -24,7 +23,6 @@ export default defineConfig(({ mode }) => ({
       },
       renderer: {},
     }),
-    */
     mode === 'development' && componentTagger(),
     legacy({
       targets: ['defaults', 'not IE 11', 'iOS >= 10', 'Android >= 6', 'chrome >= 87', 'firefox >= 78', 'safari >= 12', 'edge >= 88'],

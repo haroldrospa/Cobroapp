@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +25,15 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
 }) => {
   const [searchType, setSearchType] = useState<SearchType>('all');
   const [isFocused, setIsFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const isExpanded = isFocused || searchTerm.trim().length > 0;
   const isMobile = useIsMobile();
+
+  // Focus input on component mount
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
   const searchTypes = [{
     type: 'all' as const,
     label: 'Todo',
@@ -120,6 +127,16 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
   const handleSearchTypeChange = (newType: SearchType) => {
     setSearchType(newType);
     onSearchChange(''); // Limpiar búsqueda al cambiar tipo
+    searchInputRef.current?.focus(); // Volver foco al input
+  };
+
+  const handleProductSelect = (product: Product) => {
+    onAddToCart(product);
+    onSearchChange('');
+    // Re-focus input after adding to cart for continuous scanning/adding
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
   };
 
   // Manejar Enter para agregar producto automáticamente (útil para escáners de código de barras)
@@ -131,15 +148,13 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
       );
 
       if (exactBarcodeMatch) {
-        onAddToCart(exactBarcodeMatch);
-        onSearchChange('');
+        handleProductSelect(exactBarcodeMatch);
         return;
       }
 
       // Si no hay coincidencia exacta de código de barras, agregar el primer resultado filtrado
       if (filteredProducts.length > 0) {
-        onAddToCart(filteredProducts[0]);
-        onSearchChange('');
+        handleProductSelect(filteredProducts[0]);
       }
     }
   };
@@ -180,6 +195,7 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
         <div className="relative border-2 rounded-xl shadow-sm bg-background">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground shrink-0" />
           <Input
+            ref={searchInputRef}
             placeholder={currentSearchType?.placeholder || 'Buscar productos...'}
             value={searchTerm}
             onChange={e => onSearchChange(e.target.value)}
@@ -191,12 +207,12 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
         </div>
 
         {/* Dropdown de resultados */}
-        {searchTerm.trim() && <div className="absolute top-full left-0 right-0 mt-1 z-50 border-2 rounded-xl shadow-lg bg-background max-h-[300px] overflow-y-auto">
+        {searchTerm.trim() && <div className="absolute top-full left-0 mt-1 z-50 border-2 rounded-xl shadow-lg bg-background max-h-[300px] overflow-y-auto w-full md:w-[600px]">
           {filteredProducts.length === 0 ? <div className="p-4 text-center text-sm text-muted-foreground">
             No se encontraron productos por {currentSearchType?.label.toLowerCase()}.
           </div> : <div className="p-1">
             {filteredProducts.map(product => {
-              return <div key={product.id} onClick={() => onAddToCart(product)} className="flex justify-between items-center cursor-pointer hover:bg-accent rounded-md p-2 transition-colors">
+              return <div key={product.id} onClick={() => handleProductSelect(product)} className="flex justify-between items-center cursor-pointer hover:bg-accent rounded-md p-2 transition-colors">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <div className="font-medium">{product.name}</div>
