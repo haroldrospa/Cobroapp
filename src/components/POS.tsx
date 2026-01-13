@@ -3,10 +3,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CartItem, GlobalDiscount } from '@/types/pos';
 import { calculateItemTotal, calculateTotals } from '@/utils/posCalculations';
-import { useProducts } from '@/hooks/useProducts';
+import { useProductsOffline } from '@/hooks/useProductsOffline';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useInvoiceTypes } from '@/hooks/useInvoiceTypes';
-import { useCreateSale } from '@/hooks/useSales';
+import { useCreateSaleOffline } from '@/hooks/useSalesOffline';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -71,10 +71,10 @@ const POS: React.FC = () => {
   const { data: activeSession, isLoading: isLoadingSession } = useActiveSession();
   const { profile } = useUserProfile();
 
-  const { data: products = [], isLoading: loadingProducts } = useProducts();
+  const { data: products = [], isLoading: loadingProducts } = useProductsOffline();
   const { data: customers = [] } = useCustomers();
   const { data: invoiceTypes = [] } = useInvoiceTypes();
-  const createSale = useCreateSale();
+  const createSale = useCreateSaleOffline();
   const { toast } = useToast();
   const { data: store } = useUserStore();
   const { settings: storeSettings } = useStoreSettings();

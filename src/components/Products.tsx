@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useProducts, useDeleteProduct, useDeleteAllProducts, Product } from '@/hooks/useProducts';
+import { useDeleteProduct, useDeleteAllProducts, Product } from '@/hooks/useProducts';
+import { useProductsOffline } from '@/hooks/useProductsOffline';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import ProductForm from './ProductForm';
@@ -29,7 +30,7 @@ const Products: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const { data: products = [], isLoading } = useProducts();
+  const { data: products = [], isLoading } = useProductsOffline();
   const { data: categories = [] } = useCategories();
   const deleteProduct = useDeleteProduct();
   const deleteAllProducts = useDeleteAllProducts();

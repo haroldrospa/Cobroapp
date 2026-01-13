@@ -511,44 +511,67 @@ const PrintOptionsDialog: React.FC<PrintOptionsDialogProps> = ({
   };
 
   const handlePrintDirect = async () => {
-    // Check if there's a printer already configured in Settings
-    const hasPrinterConfigured = printSettings.useThermalPrinter && printSettings.thermalPrinterName;
+    // SIMPLIFIED APPROACH: Close this dialog and open browser print dialog directly
+    // The browser will remember the last selected printer
 
-    if (hasPrinterConfigured) {
-      // AUTO-PRINT: Printer is configured, print directly without showing dialog
-      console.log('🖨️ Auto-imprimiendo en:', printSettings.thermalPrinterName);
+    // Close the options dialog immediately
+    onClose();
 
-      // Feedback immediate
+    // Brief delay to ensure dialog closes smoothly
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    try {
+      // Import print utilities
+      const { handlePrint, injectPrintStyles, markContentAsPrintable } = await import('@/utils/printHandler');
+
+      // Ensure print styles are injected
+      injectPrintStyles();
+
+      // Generate the invoice content
+      const htmlContent = generateCleanInvoiceHTMLWrapper();
+
+      // Create a temporary container for printing
+      let printContainer = document.getElementById('temp-print-container');
+      if (!printContainer) {
+        printContainer = document.createElement('div');
+        printContainer.id = 'temp-print-container';
+        document.body.appendChild(printContainer);
+      }
+
+      // Inject the HTML content
+      printContainer.innerHTML = htmlContent;
+
+      // Mark as printable (this is critical - hides everything else)
+      markContentAsPrintable('temp-print-container');
+
+      // Small delay to ensure content is rendered
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Determine format from settings
+      let format: '80mm' | '58mm' | 'A4' = '80mm';
+      if (printSettings.paperSize === '50mm' || printSettings.paperSize === '58mm') {
+        format = '58mm';
+      } else if (printSettings.paperSize === 'A4' || printSettings.paperSize === 'carta') {
+        format = 'A4';
+      }
+
+      // Use handlePrint which properly hides all content except .printable-content
+      await handlePrint(format);
+
+      // Clean up after print
+      setTimeout(() => {
+        if (printContainer && printContainer.parentNode) {
+          printContainer.parentNode.removeChild(printContainer);
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error preparing print:', error);
       toast({
-        title: "Imprimiendo...",
-        description: `Enviando a ${printSettings.thermalPrinterName}`,
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo preparar la impresión. Intenta de nuevo.",
       });
-
-      // CLOSE IMMEDIATELY - User request: "que no se me abra mas nada"
-      onClose();
-
-      // Use DIRECT USB printing (Web Serial) to bypass browser dialog
-      // This allows silent printing once permission is granted
-      handlePrinterTypeSelected('usb').then(() => {
-        console.log("Impresión directa enviada correctamente");
-      }).catch(err => {
-        console.error("Fallo la impresión USB directa:", err);
-        toast({
-          title: "Error de conexión USB",
-          description: "No se pudo conectar directamente a la impresora. Asegúrate de que esté conectada y hayas dado permiso en el navegador.",
-          variant: "destructive"
-        });
-      });
-
-    } else {
-      // NO PRINTER CONFIGURED: Show printer selection dialog
-      const companyInfo = dbCompanyInfo;
-      const barcodeDataUrl = generateBarcode(invoiceNumber);
-      const logoDataUrl = companyInfo.logo || '';
-      const content = generateInvoiceHTML(companyInfo, logoDataUrl, barcodeDataUrl);
-
-      setInvoiceContentForPrint(content);
-      setShowPrinterSelection(true);
     }
   };
 

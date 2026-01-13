@@ -1,0 +1,230 @@
+/**
+ * Sistema de Base de Datos Offline usando IndexedDB
+ * Permite trabajar sin conexión a internet y sincronizar cuando vuelve la conexión
+ */
+
+const DB_NAME = 'CobroAppOfflineDB';
+const DB_VERSION = 1;
+
+// Tipos de tiendas (stores) en IndexedDB
+export enum OfflineStore {
+    PRODUCTS = 'products',
+    SALES = 'sales',
+    CUSTOMERS = 'customers',
+    CATEGORIES = 'categories',
+    SETTINGS = 'settings',
+    SYNC_QUEUE = 'sync_queue', // Cola de sincronización para operaciones pendientes
+}
+
+export interface SyncQueueItem {
+    id?: string;
+    store: OfflineStore;
+    operation: 'CREATE' | 'UPDATE' | 'DELETE';
+    data: any;
+    timestamp: number;
+    synced: boolean;
+    error?: string;
+}
+
+class OfflineDatabase {
+    private db: IDBDatabase | null = null;
+
+    async init(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                this.db = request.result;
+                resolve();
+            };
+
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result;
+
+                // Crear stores si no existen
+                if (!db.objectStoreNames.contains(OfflineStore.PRODUCTS)) {
+                    const productStore = db.createObjectStore(OfflineStore.PRODUCTS, { keyPath: 'id' });
+                    productStore.createIndex('barcode', 'barcode', { unique: false });
+                    productStore.createIndex('name', 'name', { unique: false });
+                    productStore.createIndex('category_id', 'category_id', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains(OfflineStore.SALES)) {
+                    const salesStore = db.createObjectStore(OfflineStore.SALES, { keyPath: 'id' });
+                    salesStore.createIndex('invoice_number', 'invoice_number', { unique: false });
+                    salesStore.createIndex('created_at', 'created_at', { unique: false });
+                    salesStore.createIndex('synced', 'synced', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains(OfflineStore.CUSTOMERS)) {
+                    const customerStore = db.createObjectStore(OfflineStore.CUSTOMERS, { keyPath: 'id' });
+                    customerStore.createIndex('name', 'name', { unique: false });
+                    customerStore.createIndex('rnc', 'rnc', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains(OfflineStore.CATEGORIES)) {
+                    db.createObjectStore(OfflineStore.CATEGORIES, { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains(OfflineStore.SETTINGS)) {
+                    db.createObjectStore(OfflineStore.SETTINGS, { keyPath: 'key' });
+                }
+
+                if (!db.objectStoreNames.contains(OfflineStore.SYNC_QUEUE)) {
+                    const syncStore = db.createObjectStore(OfflineStore.SYNC_QUEUE, {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    syncStore.createIndex('synced', 'synced', { unique: false });
+                    syncStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+            };
+        });
+    }
+
+    // Métodos CRUD genéricos
+    async add<T>(storeName: OfflineStore, data: T): Promise<T> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.add(data);
+
+            request.onsuccess = () => resolve(data);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async put<T>(storeName: OfflineStore, data: T): Promise<T> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(data);
+
+            request.onsuccess = () => resolve(data);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async get<T>(storeName: OfflineStore, key: string | number): Promise<T | null> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get(key);
+
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getAll<T>(storeName: OfflineStore): Promise<T[]> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async delete(storeName: OfflineStore, key: string | number): Promise<void> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.delete(key);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async clear(storeName: OfflineStore): Promise<void> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.clear();
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // Buscar por índice
+    async getByIndex<T>(
+        storeName: OfflineStore,
+        indexName: string,
+        value: any
+    ): Promise<T[]> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const index = store.index(indexName);
+            const request = index.getAll(value);
+
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // Métodos para la cola de sincronización
+    async addToSyncQueue(item: Omit<SyncQueueItem, 'id' | 'timestamp' | 'synced'>): Promise<void> {
+        const queueItem: Omit<SyncQueueItem, 'id'> = {
+            ...item,
+            timestamp: Date.now(),
+            synced: false,
+        };
+        await this.add(OfflineStore.SYNC_QUEUE, queueItem);
+    }
+
+    async getPendingSyncItems(): Promise<SyncQueueItem[]> {
+        return this.getByIndex<SyncQueueItem>(OfflineStore.SYNC_QUEUE, 'synced', false);
+    }
+
+    async markAsSynced(id: string | number): Promise<void> {
+        const item = await this.get<SyncQueueItem>(OfflineStore.SYNC_QUEUE, id);
+        if (item) {
+            item.synced = true;
+            await this.put(OfflineStore.SYNC_QUEUE, item);
+        }
+    }
+
+    async markAsError(id: string | number, error: string): Promise<void> {
+        const item = await this.get<SyncQueueItem>(OfflineStore.SYNC_QUEUE, id);
+        if (item) {
+            item.error = error;
+            await this.put(OfflineStore.SYNC_QUEUE, item);
+        }
+    }
+
+    // Limpiar items sincronizados antiguos (más de 7 días)
+    async cleanOldSyncedItems(): Promise<void> {
+        if (!this.db) await this.init();
+
+        const allItems = await this.getAll<SyncQueueItem>(OfflineStore.SYNC_QUEUE);
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
+        for (const item of allItems) {
+            if (item.synced && item.timestamp < sevenDaysAgo && item.id) {
+                await this.delete(OfflineStore.SYNC_QUEUE, item.id);
+            }
+        }
+    }
+}
+
+// Singleton instance
+export const offlineDB = new OfflineDatabase();

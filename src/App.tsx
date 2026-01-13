@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 // Lazy load components for code splitting
 const Layout = lazy(() => import("./components/Layout"));
@@ -54,6 +55,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <OfflineIndicator />
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
