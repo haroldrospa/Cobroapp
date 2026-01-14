@@ -159,10 +159,16 @@ export const useStoreSettings = () => {
     return existingSettings as any as StoreSettings;
   };
 
+  // Pre-load from user store if available (optimizes initial load)
+  const preloadedSettings = store?.store_settings;
+
   const { data: settings, isLoading, refetch } = useQuery({
     queryKey: ['storeSettings', storeId],
     queryFn: fetchSettings,
-    enabled: !!storeId
+    enabled: !!storeId,
+    initialData: preloadedSettings ? (preloadedSettings as any as StoreSettings) : undefined,
+    // If we have preloaded data, trust it for 5 minutes before refetching
+    staleTime: preloadedSettings ? 1000 * 60 * 5 : 0
   });
 
   const updateSettings = async (newSettings: Partial<StoreSettings>) => {

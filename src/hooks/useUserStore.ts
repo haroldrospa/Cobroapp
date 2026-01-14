@@ -7,6 +7,7 @@ export interface UserStore {
   store_name: string;
   slug: string;
   is_active: boolean;
+  store_settings?: any;
 }
 
 export const useUserStore = () => {
@@ -30,7 +31,8 @@ export const useUserStore = () => {
             store_code,
             store_name,
             slug,
-            is_active
+            is_active,
+            store_settings (*)
           )
         `)
         .eq('id', user.id)
@@ -43,7 +45,13 @@ export const useUserStore = () => {
 
       if (!data?.stores) return null;
 
-      return data.stores as UserStore;
+      // Ensure store_settings is an object, not an array (it should be 1:1)
+      const storeData = data.stores as any;
+      if (Array.isArray(storeData.store_settings)) {
+        storeData.store_settings = storeData.store_settings[0];
+      }
+
+      return storeData as UserStore;
     },
   });
 };
