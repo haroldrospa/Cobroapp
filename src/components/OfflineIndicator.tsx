@@ -22,14 +22,7 @@ export const OfflineIndicator: React.FC = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
 
-    // Don't show indicators on public store pages, auth pages, or landing page
-    const isPublicPage = location.pathname.startsWith('/tienda/') ||
-        location.pathname.startsWith('/buscar-tienda') ||
-        location.pathname === '/auth' ||
-        location.pathname === '/';
-    if (isPublicPage) {
-        return null;
-    }
+
     const { data: store } = useUserStore();
     const { settings: storeSettings } = useStoreSettings();
     const [pendingCount, setPendingCount] = useState(0);
@@ -111,6 +104,16 @@ export const OfflineIndicator: React.FC = () => {
             setIsSyncing(false);
         }
     };
+
+    // Don't show indicators on public store pages, auth pages, or landing page
+    const isPublicPage = location.pathname.startsWith('/tienda/') ||
+        location.pathname.startsWith('/buscar-tienda') ||
+        location.pathname === '/auth' ||
+        location.pathname === '/';
+
+    if (isPublicPage) {
+        return null;
+    }
 
     return (
 
