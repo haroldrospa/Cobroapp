@@ -113,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         variant: 'destructive',
       });
     } else {
-      navigate('/auth');
+      navigate('/');
     }
   };
 

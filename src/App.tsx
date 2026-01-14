@@ -25,7 +25,7 @@ const Tienda = lazy(() => import("./pages/Tienda"));
 const BuscarTienda = lazy(() => import("./pages/BuscarTienda"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +58,7 @@ const App = () => (
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes - no auth required */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/tienda/:slug" element={<Tienda />} />
             <Route path="/buscar-tienda" element={<BuscarTienda />} />

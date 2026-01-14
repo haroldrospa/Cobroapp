@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Loader2, Building2, Mail, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Building2, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 import cobroLogo from '@/assets/cobro-logo-dark.png';
 
@@ -195,9 +195,10 @@ const Auth = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <motion.div
-            className="inline-flex items-center justify-center mb-4"
+            className="inline-flex items-center justify-center mb-4 cursor-pointer"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400 }}
+            onClick={() => navigate('/')}
           >
             <img
               src={cobroLogo}
@@ -499,6 +500,22 @@ const Auth = () => {
         >
           © {new Date().getFullYear()} Cobro. Todos los derechos reservados.
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="text-center mt-4"
+        >
+          <Button
+            variant="link"
+            className="text-gray-400 hover:text-emerald-400 transition-colors text-xs"
+            onClick={() => navigate('/')}
+          >
+            <ArrowRight className="mr-2 h-3 w-3 rotate-180" />
+            Volver al inicio
+          </Button>
+        </motion.div>
       </motion.div>
     </div>
   );

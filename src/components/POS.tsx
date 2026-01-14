@@ -534,7 +534,7 @@ const POS: React.FC = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     queryClient.clear(); // Limpiar todo el caché de React Query
-    navigate('/auth');
+    navigate('/');
   };
 
   const menuButton = (
