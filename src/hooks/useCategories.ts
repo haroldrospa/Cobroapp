@@ -11,31 +11,22 @@ export interface Category {
 export const useCategories = () => {
   return useQuery({
     queryKey: ['categories'],
+    staleTime: 1000 * 60 * 20, // 20 minutes - categories change infrequently
+    gcTime: 1000 * 60 * 60 * 2, // 2 hours in cache
+    refetchOnWindowFocus: false,
     queryFn: async () => {
-      // Get current user's store_id
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('store_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      // Build query - filter by store_id if user has one
-      let query = supabase
+      // RLS handles store filtering automatically - single query is much faster
+      const { data, error } = await supabase
         .from('categories')
         .select('*')
         .order('name');
 
-      if (profile?.store_id) {
-        query = query.eq('store_id', profile.store_id);
+      if (error) {
+        console.error('Error loading categories:', error);
+        throw error;
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data as Category[];
+      return (data || []) as Category[];
     },
   });
 };

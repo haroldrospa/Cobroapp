@@ -17,7 +17,7 @@ export const useInvoiceSequences = () => {
         .from('invoice_sequences')
         .select('*')
         .order('invoice_type_id');
-      
+
       if (error) throw error;
       return data as InvoiceSequence[];
     },
@@ -32,12 +32,12 @@ export const useMaxInvoiceNumbers = () => {
       const { data, error } = await supabase
         .from('sales')
         .select('invoice_type_id, invoice_number');
-      
+
       if (error) throw error;
-      
+
       // Extraer el número máximo para cada tipo
       const maxNumbers: Record<string, number> = {};
-      
+
       data?.forEach(sale => {
         if (sale.invoice_type_id && sale.invoice_number) {
           // Extraer el número de la factura (ej: B01-00000012 -> 12)
@@ -50,7 +50,7 @@ export const useMaxInvoiceNumbers = () => {
           }
         }
       });
-      
+
       return maxNumbers;
     },
   });
@@ -66,9 +66,9 @@ export const useUpdateInvoiceSequence = () => {
         .from('sales')
         .select('invoice_number')
         .eq('invoice_type_id', invoice_type_id);
-      
+
       if (salesError) throw salesError;
-      
+
       // Encontrar el número máximo usado
       let maxUsed = 0;
       sales?.forEach(sale => {
@@ -78,20 +78,22 @@ export const useUpdateInvoiceSequence = () => {
           if (num > maxUsed) maxUsed = num;
         }
       });
-      
+
       // Validar que el nuevo current_number no sea menor al máximo usado
       // current_number representa el último número usado, el próximo será current_number + 1
+      /* VALIDATION REMOVED BY USER REQUEST
       if (current_number < maxUsed) {
         throw new Error(`No puedes establecer un próximo número menor a ${maxUsed + 1}. Ya existen facturas hasta ${invoice_type_id}-${String(maxUsed).padStart(8, '0')}.`);
       }
-      
+      */
+
       const { data, error } = await supabase
         .from('invoice_sequences')
         .update({ current_number })
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -107,15 +109,15 @@ export const useGetNextInvoiceNumber = (invoiceTypeId: string) => {
     queryKey: ['next-invoice-number', invoiceTypeId],
     queryFn: async () => {
       if (!invoiceTypeId) return null;
-      
+
       const { data, error } = await supabase
         .from('invoice_sequences')
         .select('current_number')
         .eq('invoice_type_id', invoiceTypeId)
         .single();
-      
+
       if (error) throw error;
-      
+
       // Format the next number
       const nextNumber = data.current_number + 1;
       return `${invoiceTypeId}-${String(nextNumber).padStart(8, '0')}`;

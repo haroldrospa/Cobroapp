@@ -64,6 +64,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 // --- CONFIGURATION ---
 const REPORT_TYPES = [
@@ -267,27 +268,64 @@ const Reports = () => {
   };
 
   // --- GENERATE PDF ---
-  const generatePDF = () => {
+  const generatePDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
 
     const activeReportObj = REPORT_TYPES.find(r => r.id === activeReport);
     const title = activeReportObj?.label || 'Reporte';
 
-    // Header
-    doc.setFontSize(20);
-    doc.text('Cobro App', 14, 22);
+    // Modern Header with gradient background
+    doc.setFillColor(16, 185, 129); // Emerald green
+    doc.rect(0, 0, pageWidth, 45, 'F');
+
+    // Add company logo if available
+    if (companySettings?.logo_url) {
+      try {
+        // Try to add logo - note: this requires the image to be accessible
+        const logoSize = 30;
+        doc.addImage(companySettings.logo_url, 'PNG', 15, 7.5, logoSize, logoSize);
+      } catch (error) {
+        console.log('Could not load logo in PDF');
+      }
+    }
+
+    // Company name and app name in white
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(companySettings?.name || 'Cobro App', companySettings?.logo_url ? 50 : 15, 20);
+
     doc.setFontSize(10);
-    doc.text(`Generado el: ${format(new Date(), 'Pp', { locale: es })}`, 14, 28);
-    doc.setFontSize(16);
-    doc.text(title, pageWidth / 2, 40, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generado el: ${format(new Date(), 'PPpp', { locale: es })}`, companySettings?.logo_url ? 50 : 15, 28);
+
+    // Report title on white background with colored bottom border
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 45, pageWidth, 30, 'F');
+
+    // Title
+    doc.setTextColor(31, 41, 55); // Dark gray
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, pageWidth / 2, 58, { align: 'center' });
+
+    // Date range
     if (dateRange?.from) {
-      doc.setFontSize(10);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(107, 114, 128); // Medium gray
       const dateText = dateRange.to
         ? `${format(dateRange.from, 'dd/MM/yyyy')} - ${format(dateRange.to, 'dd/MM/yyyy')}`
         : format(dateRange.from, 'dd/MM/yyyy');
-      doc.text(`Período: ${dateText}`, pageWidth / 2, 46, { align: 'center' });
+      doc.text(`Período: ${dateText}`, pageWidth / 2, 67, { align: 'center' });
     }
+
+    // Accent line
+    doc.setDrawColor(16, 185, 129);
+    doc.setLineWidth(1);
+    doc.line(15, 74, pageWidth - 15, 74);
 
     // Body
     let head: string[][] = [];
@@ -332,11 +370,76 @@ const Reports = () => {
         ['Utilidad Bruta', `$${profitData.profit.toLocaleString()}`],
         ['Margen %', `${profitData.margin.toFixed(2)}%`]
       ];
+    } else if (activeReport === 'dashboard') {
+      // Dashboard summary report
+      head = [['Métrica', 'Valor']];
+      const totalSales = filteredSales.reduce((a, b) => a + b.total, 0);
+      const avgTicket = filteredSales.length > 0 ? totalSales / filteredSales.length : 0;
+      const totalCredit = receivables.reduce((a, c) => a + (c.credit_used || 0), 0);
+
+      body = [
+        ['Ventas Totales', `$${totalSales.toLocaleString()}`],
+        ['Transacciones', filteredSales.length.toString()],
+        ['Ticket Promedio', `$${avgTicket.toFixed(2)}`],
+        ['Crédito Pendiente', `$${totalCredit.toLocaleString()}`],
+        ['Utilidad Estimada', `$${profitData.profit.toLocaleString()}`],
+        ['Margen de Ganancia', `${profitData.margin.toFixed(1)}%`]
+      ];
     }
 
     if (head.length > 0) {
-      autoTable(doc, { startY: 55, head, body, theme: 'grid' });
-      doc.save(`reporte-${activeReport}.pdf`);
+      autoTable(doc, {
+        startY: 80,
+        head,
+        body,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [16, 185, 129], // Emerald green
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11,
+          halign: 'center'
+        },
+        bodyStyles: {
+          fontSize: 10,
+          textColor: [31, 41, 55]
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251] // Light gray
+        },
+        margin: { left: 15, right: 15 },
+        styles: {
+          lineColor: [229, 231, 235],
+          lineWidth: 0.1
+        }
+      });
+
+      // Footer with page numbers and company info
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setTextColor(107, 114, 128);
+        doc.text(
+          `Página ${i} de ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: 'center' }
+        );
+        if (companySettings?.name) {
+          doc.text(
+            companySettings.name,
+            15,
+            pageHeight - 10
+          );
+        }
+      }
+
+      doc.save(`reporte-${activeReport}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      toast({
+        title: 'PDF Generado',
+        description: 'El reporte PDF se ha descargado correctamente.'
+      });
     } else {
       toast({ title: 'PDF no disponible', description: 'Este reporte no tiene plantilla de PDF configurada aún.' });
     }
@@ -434,13 +537,20 @@ const Reports = () => {
         { Concepto: 'Margen %', Monto: `${profitData.margin.toFixed(2)}%` }
       ];
     } else if (activeReport === 'dashboard') {
-      // Dashboard export: Maybe summary of sales?
-      data = filteredSales.map(s => ({
-        Fecha: format(new Date(s.created_at), 'dd/MM/yyyy HH:mm'),
-        Factura: s.invoice_number,
-        Total: s.total
-      }));
-      fileName = 'resumen-ventas';
+      // Dashboard summary export
+      const totalSales = filteredSales.reduce((a, b) => a + b.total, 0);
+      const avgTicket = filteredSales.length > 0 ? totalSales / filteredSales.length : 0;
+      const totalCredit = receivables.reduce((a, c) => a + (c.credit_used || 0), 0);
+
+      data = [
+        { Metrica: 'Ventas Totales', Valor: totalSales },
+        { Metrica: 'Transacciones', Valor: filteredSales.length },
+        { Metrica: 'Ticket Promedio', Valor: avgTicket.toFixed(2) },
+        { Metrica: 'Crédito Pendiente', Valor: totalCredit },
+        { Metrica: 'Utilidad Estimada', Valor: profitData.profit },
+        { Metrica: 'Margen de Ganancia (%)', Valor: profitData.margin.toFixed(1) }
+      ];
+      fileName = 'resumen-dashboard';
     }
 
     if (data.length === 0) {
@@ -456,7 +566,12 @@ const Reports = () => {
     const cols = Object.keys(data[0]).map(key => ({ wch: Math.max(key.length, 20) }));
     ws['!cols'] = cols;
 
-    XLSX.writeFile(wb, `${fileName}.xlsx`);
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    XLSX.writeFile(wb, `${fileName}-${dateStr}.xlsx`);
+    toast({
+      title: 'Excel Generado',
+      description: 'El archivo Excel se ha descargado correctamente.'
+    });
   };
 
   const handleSendEmail = () => {
@@ -977,36 +1092,12 @@ const Reports = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              {/* Date Picker */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[200px] justify-start text-left font-normal h-9">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "dd MMM", { locale: es })} -{" "}
-                          {format(dateRange.to, "dd MMM", { locale: es })}
-                        </>
-                      ) : (
-                        format(dateRange.from, "dd MMM", { locale: es })
-                      )
-                    ) : (
-                      "Seleccionar fechas"
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+              {/* Modern Date Range Picker */}
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
 
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => generatePDF()} title="Descargar PDF">
                 <FileText className="h-4 w-4" />

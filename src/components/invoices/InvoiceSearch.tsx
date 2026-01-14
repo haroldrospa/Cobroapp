@@ -1,14 +1,12 @@
 
 import React from 'react';
-import { Search, Filter, Calendar, User, CreditCard } from 'lucide-react';
+import { Search, Filter, User, CreditCard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
 
 interface InvoiceSearchProps {
   searchTerm: string;
@@ -23,10 +21,8 @@ interface InvoiceSearchProps {
   onUserIdChange: (value: string) => void;
   invoiceTypeFilter: string;
   onInvoiceTypeChange: (value: string) => void;
-  dateFrom: Date | undefined;
-  onDateFromChange: (date: Date | undefined) => void;
-  dateTo: Date | undefined;
-  onDateToChange: (date: Date | undefined) => void;
+  dateRange: DateRange | undefined;
+  onDateRangeChange: (range: DateRange | undefined) => void;
   minAmount: string;
   onMinAmountChange: (value: string) => void;
   maxAmount: string;
@@ -49,10 +45,8 @@ const InvoiceSearch: React.FC<InvoiceSearchProps> = ({
   onUserIdChange,
   invoiceTypeFilter,
   onInvoiceTypeChange,
-  dateFrom,
-  onDateFromChange,
-  dateTo,
-  onDateToChange,
+  dateRange,
+  onDateRangeChange,
   minAmount,
   onMinAmountChange,
   maxAmount,
@@ -85,6 +79,14 @@ const InvoiceSearch: React.FC<InvoiceSearchProps> = ({
     <Card>
       <CardContent className="p-4">
         <div className="space-y-4">
+          {/* Date Range Picker - FIRST (on top) */}
+          <div>
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={onDateRangeChange}
+            />
+          </div>
+
           {/* Búsqueda principal */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
@@ -175,42 +177,6 @@ const InvoiceSearch: React.FC<InvoiceSearchProps> = ({
                 <SelectItem value="B15">B15 - Gubernamental</SelectItem>
               </SelectContent>
             </Select>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="justify-start text-left font-normal">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Desde"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={dateFrom}
-                  onSelect={onDateFromChange}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="justify-start text-left font-normal">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {dateTo ? format(dateTo, "dd/MM/yyyy") : "Hasta"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={dateTo}
-                  onSelect={onDateToChange}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
           </div>
 
           {/* Filtros de monto */}

@@ -12,7 +12,13 @@ import {
     Star,
     ArrowRight,
     Menu,
-    X
+    X,
+    FileText,
+    DollarSign,
+    Receipt,
+    TrendingUp,
+    ShoppingCart,
+    CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +28,7 @@ import { useState } from 'react';
 const LandingPage = () => {
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
     useEffect(() => {
         // Check if user is already logged in, redirect to POS if so
@@ -111,8 +118,105 @@ const LandingPage = () => {
             <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
                 {/* Background Elements */}
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+                    {/* Gradient Blobs */}
                     <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[120px]" />
                     <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px]" />
+
+                    {/* Floating Icons - Invoices & Accounting */}
+                    <motion.div
+                        className="absolute top-20 left-[10%] text-emerald-500/20"
+                        animate={{
+                            y: [0, -20, 0],
+                            rotate: [0, 5, 0]
+                        }}
+                        transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        }}
+                    >
+                        <FileText size={60} />
+                    </motion.div>
+
+                    <motion.div
+                        className="absolute top-40 right-[15%] text-blue-500/20"
+                        animate={{
+                            y: [0, 20, 0],
+                            rotate: [0, -5, 0]
+                        }}
+                        transition={{
+                            duration: 7,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 1
+                        }}
+                    >
+                        <DollarSign size={50} />
+                    </motion.div>
+
+                    <motion.div
+                        className="absolute bottom-32 left-[20%] text-cyan-500/20"
+                        animate={{
+                            y: [0, -15, 0],
+                            rotate: [0, 3, 0]
+                        }}
+                        transition={{
+                            duration: 5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 0.5
+                        }}
+                    >
+                        <Receipt size={45} />
+                    </motion.div>
+
+                    <motion.div
+                        className="absolute top-1/3 left-[5%] text-emerald-400/15"
+                        animate={{
+                            y: [0, 25, 0],
+                            x: [0, 10, 0]
+                        }}
+                        transition={{
+                            duration: 8,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 2
+                        }}
+                    >
+                        <TrendingUp size={55} />
+                    </motion.div>
+
+                    <motion.div
+                        className="absolute bottom-20 right-[10%] text-purple-500/20"
+                        animate={{
+                            y: [0, -18, 0],
+                            rotate: [0, -3, 0]
+                        }}
+                        transition={{
+                            duration: 6.5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 1.5
+                        }}
+                    >
+                        <ShoppingCart size={48} />
+                    </motion.div>
+
+                    <motion.div
+                        className="absolute top-1/2 right-[8%] text-teal-500/15"
+                        animate={{
+                            y: [0, 22, 0],
+                            rotate: [0, 4, 0]
+                        }}
+                        transition={{
+                            duration: 7.5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 0.8
+                        }}
+                    >
+                        <CreditCard size={52} />
+                    </motion.div>
                 </div>
 
                 <div className="container mx-auto px-4 md:px-6 text-center">
@@ -209,21 +313,59 @@ const LandingPage = () => {
                         <p className="text-gray-400">Elige el plan que mejor se adapte al tamaño de tu negocio.</p>
                     </div>
 
+                    <div className="flex justify-center mb-12">
+                        <div className="inline-flex bg-gray-800 p-1 rounded-lg gap-1">
+                            {/* Monthly Button */}
+                            <button
+                                onClick={() => setBillingCycle('monthly')}
+                                className={`
+                                    px-8 py-3 rounded-md text-sm font-medium transition-all duration-200
+                                    ${billingCycle === 'monthly'
+                                        ? 'bg-emerald-500 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white'
+                                    }
+                                `}
+                            >
+                                Mensual
+                            </button>
+
+                            {/* Annual Button */}
+                            <button
+                                onClick={() => setBillingCycle('annual')}
+                                className={`
+                                    px-8 py-3 rounded-md text-sm font-medium transition-all duration-200
+                                    flex items-center gap-2
+                                    ${billingCycle === 'annual'
+                                        ? 'bg-emerald-500 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white'
+                                    }
+                                `}
+                            >
+                                <span>Anual</span>
+                                <span className="text-xs bg-emerald-400 text-gray-900 px-2 py-0.5 rounded-full font-bold">
+                                    -20%
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                         <PricingCard
                             title="Emprendedor"
-                            price="$0"
-                            period="/mes"
-                            description="Perfecto para comenzar"
-                            features={['1 Usuario', 'Hasta 100 productos', 'Ventas ilimitadas', 'Soporte por email']}
-                            buttonText="Crear Cuenta Gratis"
+                            price={billingCycle === 'monthly' ? "$9.99" : "$95.90"}
+                            period={billingCycle === 'monthly' ? "/mes" : "/año"}
+                            savings={billingCycle === 'annual' ? "Ahorras $23.98" : null}
+                            description="Perfecto para negocios que inician"
+                            features={['1 Usuario', 'Hasta 500 productos', 'Ventas ilimitadas', 'Soporte por email']}
+                            buttonText="Crear Cuenta"
                             onClick={() => navigate('/auth')}
                         />
                         <PricingCard
                             title="Pro"
-                            price="$29"
-                            period="/mes"
-                            description="Para negocios en crecimiento"
+                            price={billingCycle === 'monthly' ? "$39.99" : "$383.90"}
+                            period={billingCycle === 'monthly' ? "/mes" : "/año"}
+                            savings={billingCycle === 'annual' ? "Ahorras $95.98" : null}
+                            description="Para negocios en expansión"
                             isPopular={true}
                             features={['3 Usuarios', 'Productos ilimitados', 'Facturación NCF', 'Reportes avanzados', 'Tienda Web']}
                             buttonText="Comenzar Prueba Gratis"
@@ -231,8 +373,9 @@ const LandingPage = () => {
                         />
                         <PricingCard
                             title="Empresarial"
-                            price="$99"
-                            period="/mes"
+                            price={billingCycle === 'monthly' ? "$99.99" : "$959.90"}
+                            period={billingCycle === 'monthly' ? "/mes" : "/año"}
+                            savings={billingCycle === 'annual' ? "Ahorras $239.98" : null}
                             description="Máximo control y potencia"
                             features={['Usuarios ilimitados', 'Múltiples sucursales', 'API Access', 'Soporte prioritario 24/7', 'Gestor de cuenta']}
                             buttonText="Contactar Ventas"
@@ -325,6 +468,50 @@ const LandingPage = () => {
                 </div>
             </section>
 
+            {/* Made in Dominican Republic Section */}
+            <section className="py-16 border-t border-gray-900">
+                <div className="container mx-auto px-4 md:px-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center max-w-3xl mx-auto"
+                    >
+                        {/* Dominican Flag */}
+                        <div className="flex justify-center mb-6">
+                            <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                className="flex items-center gap-4 bg-gray-800/50 px-8 py-4 rounded-2xl border border-gray-700/50"
+                            >
+                                <span className="text-6xl">🇩🇴</span>
+                                <div className="text-left">
+                                    <p className="text-sm text-gray-400">Hecho con orgullo en</p>
+                                    <p className="text-2xl font-bold text-white">República Dominicana</p>
+                                    <p className="text-xs text-emerald-400 mt-1">por Harold Rosado</p>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        {/* Dominican Phrase */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.3 }}
+                            className="bg-gradient-to-r from-blue-600/20 via-red-600/20 to-blue-600/20 p-6 rounded-xl border border-gray-700/50"
+                        >
+                            <p className="text-xl md:text-2xl font-medium text-emerald-400 mb-2">
+                                "De aquí pal mundo 🚀"
+                            </p>
+                            <p className="text-gray-400 text-sm md:text-base">
+                                Una solución dominicana para emprendedores dominicanos.
+                                Creada por nosotros, para nosotros. ¡Apoye lo nuestro! 🇩🇴
+                            </p>
+                        </motion.div>
+                    </motion.div>
+                </div>
+            </section>
+
             {/* CTA Footer */}
             <footer className="bg-gray-950 py-12 border-t border-gray-900">
                 <div className="container mx-auto px-4 md:px-6">
@@ -336,7 +523,15 @@ const LandingPage = () => {
                         <div className="flex gap-8 text-gray-500 text-sm">
                             <a href="#" className="hover:text-emerald-500 transition-colors">Términos</a>
                             <a href="#" className="hover:text-emerald-500 transition-colors">Privacidad</a>
-                            <a href="#" className="hover:text-emerald-500 transition-colors">Contacto</a>
+                            <a
+                                href="https://wa.me/18099175744?text=Hola,%20me%20interesa%20Cobro%20App"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-emerald-500 transition-colors flex items-center gap-1"
+                            >
+                                Contacto
+                                <span className="text-xs">📱</span>
+                            </a>
                         </div>
                         <div className="text-gray-600 text-sm">
                             © {new Date().getFullYear()} Cobro App Inc.
@@ -363,7 +558,7 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
     </motion.div>
 );
 
-const PricingCard = ({ title, price, period, description, features, isPopular, buttonText, onClick }: any) => (
+const PricingCard = ({ title, price, period, savings, description, features, isPopular, buttonText, onClick }: any) => (
     <motion.div
         whileHover={{ y: -5 }}
         className={`relative p-8 rounded-2xl border ${isPopular ? 'border-emerald-500 bg-gray-800/80 shadow-2xl shadow-emerald-900/40' : 'border-gray-800 bg-gray-900/50'} flex flex-col`}
@@ -375,9 +570,16 @@ const PricingCard = ({ title, price, period, description, features, isPopular, b
         )}
         <h3 className="text-2xl font-bold mb-2">{title}</h3>
         <p className="text-sm text-gray-400 mb-6">{description}</p>
-        <div className="mb-8">
-            <span className="text-4xl font-extrabold">{price}</span>
-            <span className="text-gray-500">{period}</span>
+        <div className="mb-6">
+            <div className="flex items-baseline">
+                <span className="text-4xl font-extrabold">{price}</span>
+                <span className="text-gray-500 ml-1">{period}</span>
+            </div>
+            {savings && (
+                <div className="text-emerald-400 text-sm font-medium mt-2 bg-emerald-500/10 inline-block px-2 py-1 rounded">
+                    {savings}
+                </div>
+            )}
         </div>
         <ul className="space-y-4 mb-8 flex-1">
             {features.map((feature: string, i: number) => (

@@ -159,10 +159,15 @@ const Invoices: React.FC = () => {
         onUserIdChange={(value) => setFilters(prev => ({ ...prev, userId: value }))}
         invoiceTypeFilter={filters.invoiceTypeId || 'all'}
         onInvoiceTypeChange={(value) => setFilters(prev => ({ ...prev, invoiceTypeId: value }))}
-        dateFrom={filters.dateFrom}
-        onDateFromChange={(date) => setFilters(prev => ({ ...prev, dateFrom: date }))}
-        dateTo={filters.dateTo}
-        onDateToChange={(date) => setFilters(prev => ({ ...prev, dateTo: date }))}
+        dateRange={{
+          from: filters.dateFrom,
+          to: filters.dateTo,
+        }}
+        onDateRangeChange={(range) => setFilters(prev => ({
+          ...prev,
+          dateFrom: range?.from,
+          dateTo: range?.to,
+        }))}
         minAmount={filters.minAmount?.toString() || ''}
         onMinAmountChange={(value) => setFilters(prev => ({ ...prev, minAmount: value ? parseFloat(value) : undefined }))}
         maxAmount={filters.maxAmount?.toString() || ''}

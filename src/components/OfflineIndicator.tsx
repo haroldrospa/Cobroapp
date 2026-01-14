@@ -22,8 +22,11 @@ export const OfflineIndicator: React.FC = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
 
-    // Don't show indicators on public store pages
-    const isPublicPage = location.pathname.startsWith('/tienda/') || location.pathname.startsWith('/buscar-tienda');
+    // Don't show indicators on public store pages, auth pages, or landing page
+    const isPublicPage = location.pathname.startsWith('/tienda/') ||
+        location.pathname.startsWith('/buscar-tienda') ||
+        location.pathname === '/auth' ||
+        location.pathname === '/';
     if (isPublicPage) {
         return null;
     }

@@ -12,29 +12,38 @@ export interface UserStore {
 export const useUserStore = () => {
   return useQuery({
     queryKey: ['user-store'],
+    staleTime: 1000 * 60 * 60, // 1 hour - store data rarely changes
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours in cache
+    refetchOnWindowFocus: false,
+    retry: 3, // This is critical data, retry more
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      // Get user's profile with store_id
-      const { data: profile, error: profileError } = await supabase
+      // Single optimized query using JOIN - much faster than 3 separate queries
+      const { data, error } = await supabase
         .from('profiles')
-        .select('store_id')
+        .select(`
+          store_id,
+          stores:store_id (
+            id,
+            store_code,
+            store_name,
+            slug,
+            is_active
+          )
+        `)
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !profile?.store_id) return null;
+      if (error) {
+        console.error('Error loading user store:', error);
+        return null;
+      }
 
-      // Get store details
-      const { data: store, error: storeError } = await supabase
-        .from('stores')
-        .select('id, store_code, store_name, slug, is_active')
-        .eq('id', profile.store_id)
-        .single();
+      if (!data?.stores) return null;
 
-      if (storeError) return null;
-
-      return store as UserStore;
+      return data.stores as UserStore;
     },
   });
 };

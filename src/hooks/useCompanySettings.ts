@@ -30,6 +30,9 @@ export const useCompanySettings = () => {
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['company-settings', userStore?.id],
+    staleTime: 1000 * 60 * 30, // 30 minutes - company settings rarely change
+    gcTime: 1000 * 60 * 60 * 2, // 2 hours in cache
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!userStore?.id) return null;
 

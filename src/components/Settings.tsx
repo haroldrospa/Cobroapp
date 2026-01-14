@@ -24,6 +24,7 @@ import SettingsStoreSection from '@/components/settings/SettingsStoreSection';
 import BannerSettingsSection from '@/components/settings/BannerSettingsSection';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { InvoiceSequenceInput } from '@/components/settings/InvoiceSequenceInput';
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/useCategories';
 import {
   Building2,
@@ -2506,32 +2507,20 @@ const Settings = () => {
                                 {invoiceType?.description}
                               </p>
                               {minNumber > 0 && (
-                                <p className="text-xs text-amber-500">
-                                  Mínimo permitido: {minNumber + 1} (siguiente a la última factura usada)
+                                <p className="text-xs text-muted-foreground">
+                                  Última factura usada: {minNumber}
                                 </p>
                               )}
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="space-y-1">
                                 <Label className="text-xs">Próximo Número</Label>
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    value={sequence.current_number + 1}
-                                    onChange={(e) => {
-                                      const newValue = parseInt(e.target.value);
-                                      if (newValue > 0) {
-                                        // Guardamos newValue - 1 porque current_number es el último usado
-                                        handleUpdateSequence(sequence.id, newValue - 1, sequence.invoice_type_id);
-                                      }
-                                    }}
-                                    className="w-24 text-center"
-                                    min={(minNumber || 0) + 1}
-                                  />
-                                  <span className="text-sm text-muted-foreground">
-                                    → {sequence.invoice_type_id}-{String(sequence.current_number + 1).padStart(8, '0')}
-                                  </span>
-                                </div>
+                                <InvoiceSequenceInput
+                                  id={sequence.id}
+                                  invoiceTypeId={sequence.invoice_type_id}
+                                  currentNumber={sequence.current_number}
+                                  onUpdate={handleUpdateSequence}
+                                />
                               </div>
                             </div>
                           </div>

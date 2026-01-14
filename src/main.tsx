@@ -2,6 +2,7 @@ import 'regenerator-runtime/runtime';
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import './styles/date-range-picker.css'
 import { registerSW } from 'virtual:pwa-register';
 
 // Register PWA Service Worker

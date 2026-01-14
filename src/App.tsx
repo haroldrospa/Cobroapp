@@ -31,12 +31,16 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       networkMode: 'offlineFirst',
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours - keep data in cache
+      staleTime: 1000 * 60 * 15, // 15 minutes - data is fresh for longer
+      refetchOnWindowFocus: false, // Don't refetch when window regains focus
+      refetchOnReconnect: true, // Refetch when internet reconnects
+      retry: 2, // Retry failed requests twice
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     },
     mutations: {
       networkMode: 'offlineFirst',
+      retry: 1, // Retry mutations once
     }
   },
 });

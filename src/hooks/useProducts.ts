@@ -29,20 +29,12 @@ export interface Product {
 export const useProducts = () => {
   return useQuery({
     queryKey: ['products'],
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    staleTime: 1000 * 60 * 15, // 15 minutes - products don't change that often
+    gcTime: 1000 * 60 * 60, // 1 hour in cache
     queryFn: async () => {
-      // Get current user's store_id
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('store_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      // Build query - filter by store_id if user has one
-      let query = supabase
+      // RLS (Row Level Security) automatically filters by store_id
+      // No need to fetch user and profile separately - let RLS do the work
+      const { data, error } = await supabase
         .from('products')
         .select(`
           *,
@@ -50,14 +42,12 @@ export const useProducts = () => {
         `)
         .order('name');
 
-      if (profile?.store_id) {
-        query = query.eq('store_id', profile.store_id);
+      if (error) {
+        console.error('Error loading products:', error);
+        throw error;
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data as Product[];
+      return (data || []) as Product[];
     },
   });
 };
