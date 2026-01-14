@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Package, Plus, Search, Edit, Trash2, Upload, Download, Hash, Barcode, Tag, DollarSign, AlertTriangle, Printer, Loader2 } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -451,7 +452,7 @@ const Products: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Cargando productos...</div>
+        <LoadingLogo text="Cargando productos..." size="sm" />
       </div>
     );
   }

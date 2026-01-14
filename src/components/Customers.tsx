@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Users, Plus, Search, Edit, CreditCard, Phone, Loader2 } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,7 +95,7 @@ const Customers: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <LoadingLogo text="Cargando clientes..." size="sm" />
       </div>
     );
   }

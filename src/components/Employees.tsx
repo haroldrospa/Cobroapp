@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Edit, User, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,8 +110,10 @@ const Employees: React.FC = () => {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8">
-                                        Cargando empleados...
+                                    <TableCell colSpan={5} className="py-8">
+                                        <div className="flex justify-center items-center">
+                                            <LoadingLogo size="sm" text="Cargando empleados..." />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ) : filteredEmployees.length === 0 ? (

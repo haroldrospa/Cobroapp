@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Maximize, Minimize, Menu, Home, Package, Users, FileText, BarChart, Settings as SettingsIcon, Store, LogOut, Save, ClipboardList, Receipt, RefreshCcw, HandCoins, Lock } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -31,7 +32,6 @@ import { useActiveSession } from '@/hooks/useCashSession';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 import { useUserStore } from '@/hooks/useUserStore';
-import { useWebOrderNotifications } from '@/hooks/useWebOrderNotifications';
 import { useWebOrdersCount } from '@/hooks/useWebOrdersCount';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useSavedCart, useAutoSaveCart } from '@/hooks/useSavedCart';
@@ -79,14 +79,9 @@ const POS: React.FC = () => {
   const { data: store } = useUserStore();
   const { settings: storeSettings } = useStoreSettings();
 
-  // Notificaciones y conteo de pedidos web
-  useWebOrderNotifications({
-    storeId: store?.id,
-    enabled: !!store?.id,
-    soundEnabled: storeSettings?.web_order_sound_enabled ?? true,
-    soundType: (storeSettings?.web_order_sound_type as any) ?? 'chime',
-    soundVolume: storeSettings?.web_order_sound_volume ?? 0.7
-  });
+
+
+  // Notificaciones manejadas globalmente en OfflineIndicator
   const { data: webOrdersCount = 0 } = useWebOrdersCount();
 
   const { savedCart, isLoading: isLoadingSavedCart } = useSavedCart();
@@ -524,12 +519,8 @@ const POS: React.FC = () => {
 
   if (loadingProducts) {
     return (
-      <div className="flex items-center justify-center h-64 font-sans">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-xl font-medium animate-pulse text-primary">Cargando catálogo de productos...</div>
-          <p className="text-sm text-muted-foreground">Preparando tu punto de venta</p>
-        </div>
+      <div className="flex h-screen items-center justify-center">
+        <LoadingLogo text="Cargando catálogo de productos..." size="md" />
       </div>
     );
   }

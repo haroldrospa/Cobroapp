@@ -14,7 +14,7 @@ export const useWebOrdersCount = () => {
         .from('open_orders')
         .select('*', { count: 'exact', head: true })
         .eq('store_id', userStore.id)
-        .eq('source', 'web')
+        .ilike('source', 'web')
         .eq('order_status', 'pending');
 
       if (error) {
@@ -25,6 +25,7 @@ export const useWebOrdersCount = () => {
       return count || 0;
     },
     enabled: !!userStore?.id,
-    refetchInterval: 30000, // Refetch every 30 seconds as backup
+    refetchInterval: 5000, // Refetch every 5 seconds for near-realtime backup
+    refetchOnWindowFocus: true,
   });
 };

@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DeductionsManager } from './DeductionsManager';
 import { printPayrollReceipt } from '@/utils/printPayrollReceipt';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 
 export default function Payroll() {
     const { payrolls, loadingPayrolls, createPayroll, deletePayroll, fetchPayrollItems, updatePayrollItem, finalizePayroll } = usePayroll();
@@ -295,7 +296,11 @@ export default function Payroll() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {payrolls.map((payroll) => (
+                {loadingPayrolls ? (
+                    <div className="md:col-span-2 lg:col-span-3 min-h-[200px] flex items-center justify-center">
+                        <LoadingLogo text="Cargando nóminas..." size="sm" />
+                    </div>
+                ) : payrolls.map((payroll) => (
                     <Card key={payroll.id} className="hover:shadow-md transition-shadow cursor-pointer relative group" onClick={() => handleViewDetails(payroll)}>
                         <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12">
                             <div className="flex flex-col gap-1">
@@ -629,7 +634,15 @@ export default function Payroll() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {items.map((item) => (
+                                {loadingItems ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-64">
+                                            <div className="flex items-center justify-center">
+                                                <LoadingLogo text="Cargando empleados..." size="sm" />
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : items.map((item) => (
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium sticky left-0 bg-background/90">{item.employee_name}</TableCell>
                                         <TableCell>${item.base_salary.toLocaleString()}</TableCell>

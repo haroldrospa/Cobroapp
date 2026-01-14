@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -84,7 +85,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <LoadingLogo text="Verificando sesión..." />
       </div>
     );
   }

@@ -1,19 +1,7 @@
-// Notification sound definitions - base64 encoded short audio clips
-export const notificationSounds: Record<string, string> = {
-  // Chime - pleasant two-tone
-  chime: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVYGAACAgICAgICAgICAgICAgICAgICAgICAgICAf4CAgH+AgICAgICAf4CAf3+AgICAf4B/gH+AgICAf4CAf39/f4CAf39/gH9/f3+Af39/f39/gH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/fX99fX19fX19fX18fX19fXt9fX19e3t9fXt7e3t7e3t7e3t5e3t7e3l7e3t5e3l5eXl5eXl5eXl5eXl3eXl5eXd5d3d3d3d3d3d1d3d3d3V1dXV1dXV1dXV1c3VsZVVHOC4kIB4dHR0dHR8fHyAjKDM/S1tnc3t9fX19fX9/gICAf4CAf4CAgICAgICAgICAgICAgICCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoSEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgICAgICAgICAgICAgICAgH+AgIB/gIB/gICAf4B/f4CAgH9/f4B/f3+Af39/f39/f39/f39/f39/f39/f39/f39/f39/f399f399fX19fX19fX19fX19fX19fX19fX19fX17fX19e317e3t7e3t7e3t7e3t7e3t7e3t7eXt5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5d3l5d3d3d3d3d3d3d3d3d3d1d3V1dXV1dXV1dXV1dXV1dXV1',
-  
-  // Bell - classic notification bell
-  bell: 'data:audio/wav;base64,UklGRsQFAABXQVZFZm10IBAAAAABAAEAIlYAACJWAAABAAgAZGF0YaAFAACAf39/f39/f4B/gH9/gH+AgIB/gH+AgICAgH+AgICAgICAgICAgIGAgYCBgIGAgYGBgYGBgYGCgYKBgoGCgYKCgoKCgoKCg4KDgoOCg4ODg4ODg4ODhIOEg4SEhISEhISEhYSFhIWFhYWFhYaFhoWGhoaGhoaGh4aHhoeHh4eHh4eIh4iHiIiIiIiIiImIiYiJiYmJiYqJiomKioqKioqLiouKi4uLi4uLjIuMi4yMjIyMjI2MjYyNjY2NjY2OjY6Njo6Ojo6Oj46Pjo+Pj4+Pj5CQkI+QkJCQkJCQkZCRkJGRkZGRkZGRkZGRkZKRkpGSkpKSkpKSkpKSkpKSkpKSkpKTkpOSk5KTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5KTkpOSk5KSkpKSkpKSkpKSkpGSkZKRkZGRkZGRkZGRkJGQkZCQkJCQkJCQkJCPkI+Qj4+Pj4+Pj4+Ojo+Ojo6Ojo6NjY2NjY2NjY2MjYyNjIyMjIyMi4yLjIuLi4uLi4uKi4qLioqKioqKiYqJiomJiYmJiYiJiIiIiIiIiIeIh4iHh4eHh4eGh4aHhoaGhoaGhYaFhoWFhYWFhYSFhISEhISEhIOEg4SDg4ODg4ODgoOCg4KCgoKCgoGCgYKBgYGBgYGBgIGAgYCAgICAgIB/gIB/gH+Af4B/f39/f39/f39+f35/fn5+fn5+fX5+fX19fX19fXx9fH18fHx8fHx7fHt8e3t7e3t7ent6e3p6enp6enl6eXp5eXl5eXl4eXh5eHh4eHh4d3h3eHd3d3d3d3Z3dnZ2dnZ2dnV2dXZ1dXV1dXV0dXR1dHR0dHR0c3RzdHNzc3Nzc3Jzc3Jyc3JycnJxcnJycXFxcXFxcXFxcXBxcHFwcHBwcHBwcHBvcHBvb29vb29vb29vb29vb29vb25vb25ubm5ubm5ubm5ubm5ubm5ubm1ubW5tbW1tbW1tbW1tbW1tbW1tbW1tbWxtbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGtsbGtrbGtra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tsa2xra2xrbGtsa2xrbGtsbGxsbGxsbGxsbGxsbGxtbGxsbW1tbW1tbW1tbW1tbW5tbW5tbm1ubm5ubm5ubm5ub29ub29vb29vb29vb29vb3Bvb3BwcHBwcHBwcHBwcHFwcXBxcXFxcXFxcXFxcnFycXJycnJycnJycnNyc3Jzc3Nzc3Nzc3N0c3R0dHR0dHR0dHV0dXR1dXV1dXV1dnV2dXZ2dnZ2dnZ3dnd2d3d3d3d3eHd4eHh4eHh4eXh5eHl5eXl5eXp5enl6enp6enp7ent6e3t7e3t7fHt8e3x8fHx8fH18fX19fX19fX5+fn5+fn5+fn9+f35/f39/f39/gH+AgICAgICAgIGAgYCBgYGBgYGBgYKBgoGCgoKCgoKCg4KDgoODg4ODg4ODhIOEg4SEhISEhIQ=',
-  
-  // Ding - short pleasant ding
-  ding: 'data:audio/wav;base64,UklGRjIGAABXQVZFZm10IBAAAAABAAEAIlYAACJWAAABAAgAZGF0YQ4GAACBgYCAgH9/f39/f39/f39/f39/f39/f39/f39/gH+AgICAgICBgIGAgYGBgYGCgYKCgoKCg4KDg4ODhIOEhISFhIWFhYWGhYaGhoaHhoeHh4iHiIiIiYiJiYmKiYqKioqLiouLi4yLjIyMjY2Njo2Ojo6Pjo+Pj5CQkJCRkJGRkZKRkpKSk5OTk5SUlJSVlJWVlZaVlpaWl5aXl5eYl5iYmJmYmZmZmpqampmamZqZmpmanJubnJycnZ2dnZ6dnp6enp+en5+fn6Cfn5+gn6CgoKGgoaGhoaGioaKhoqKio6Kjo6Okk4OFh4qNjpCSk5OUlZWWl5eYmJmZmpqbm5ucnJ2dnZ6en5+goKChoaGioqOjo6SkpKWlpaampqenp6ioqKmpqaqqq6urq6ysra2tra6ur6+vr7CwsLGxsrKzsrOzs7S0tLW1tre2t7e3uLi4ubm5urq6u7u8u7y8vL29vb6+vr6/v7+/v8DAv7+/v76+vr69vb28vLy8u7u7urq5ubi4t7e2tra1tbS0s7Ozs7Kxsa+vr66urqysa2pwdnuAhIaJi42Pk5OVlpaYmJqdnp6goqKjo6WlpqeoqKqrq6ytrrCwr7GxsrKzs7S0tba2t7e4uLi5urq7u7y8vb29vr6/v8DAwMHBwcLCwsPDw8TExMTFxcXFxsbGxsfHx8fIyMfIyMjJycnJycnJycnJycnJycnIycjIyMjIx8fHx8bGxsbFxcXFxMTExMPDw8LCwsLBwcDAwL+/v76+vr29vby8u7u6urm5ubm4t7e2traRe4CGi4+SlpicnqGjpaiqrK2vsLGztLW2t7i5urq7vL29vr6/wMDBwcLCwsPDxMTExcXFxsbGx8fHx8fIyMjIyMnJycnJycrKysrKysrKysrKysrKysnJycnJycnIyMjIyMfHx8fGxsbFxcXFxMTEw8PDwsLBwcHAwL+/vr69vby8u7u6ubm4uLe3tra1tLSzs7KxsLCvr62trKyqqpiKjZGVmJyfoaSlqKqsrrCxsrS1tre4ubq7vL2+vr/AwMHBwsPDxMTExcXGxsbHx8fIyMjIyMnJycrKysrKysvLy8vLy8vLy8vLy8vLy8rKysrKysnJycnJyMjIyMfHx8bGxsXFxcTEw8PDwsLBwcDAwL+/vr69vby8u7q5ubm4t7e2trW0tLOysrGxsK+vrq6tq6qpp4iPlZqdoKOmqKqtr7Gys7W2t7i5uru8vb6/wMDBwcLDw8TExcXGxsbHx8jIyMnJycrKysrLy8vLzMzMzMzMzMzNzc3NzMzMzMzMy8vLy8vKysrKycnJycjIyMjHx8bGxsXFxcTEw8PCwsLBwMDAvr++vr29vLy7urq5uLi3t7a1tLSzs7KysbCwr66trKypp6aieYiTmZ6ho6aqrK6wsrS1t7i5uru8vr+/wMHCwsPDxMXFxsbHx8jIyMnJycrKysrLy8vLzMzMzMzNzc3Nzc3Nzc3Nzc3Nzc3Nzc3NzMzMzMvLy8vLysrKycnJyMjIx8fGxsXFxcTEw8LCwcHAwL+/vr29vLy7urq5uLi3tra1tLSzs7KxsLCvr62trayrqqmop6SEkZidoaOmqa2vsLK0tbe4ubq8vb6/wMHCw8PExcXGxsfIyMjJycrKysrLy8vLzMzMzM3Nzc3Nzc3Nzc7Ozs7Ozs7Ozs7Ozs7Ozs7Nzc3NzMzMzMvLy8vKysrJycnIyMfHxsbFxcTEw8PCwsHBwMC/vr69vby7u7q6ubm4t7a2tbS0s7OysLCvr66tq6ysq6qop6allA==',
-  
-  // Alert - more urgent notification
-  alert: 'data:audio/wav;base64,UklGRq4EAABXQVZFZm10IBAAAAABAAEAIlYAACJWAAABAAgAZGF0YYoEAACBgoOEhYaHiImKi4yNjo+QkZKTlJWWl5iZmpucnZ6foKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr/AwcLDxMXGx8jJysvMzc7P0NHS09TV1tfY2drb3N3e3+Dh4uPk5ebn6Onq6+zt7u/w8fLz9PX29/j5+vr7/P3+/v7+/f38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPSzs7IxL+7t7SxrquopaKgnsTPy8fDwLy5trOwr6yopKGfnZ2irK+ytbe7vsHEx8rNz9LV19nb3d/h4+Xn6err7e7w8fLz9Pb39/j5+vr7+/z9/f7+//4Yl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5aWlpaWlpaWlpaWlpaVlZWVlZWVlZWUlJSUlJSUlJOTk5OTk5KSkpKSk5KTlJSUlJSVlZWWlpaWl5eXmJiYmZmZmpqbm5ucnJ2dnZ6enp+fn5+goKChoaGioqKjo6OjpKSkpKSkpKSkpKSkpKSjo6Ojo6OioqKioaGhIJaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaVlZWVlZWVlZWVlJSUlJSUlJSUlJOTk5OTk5OTkpKSkpKSkpKTk5OTk5SUlJSUlJWVlZWWlpaWlpeXl5eYmJiYmZmZmZqampqbm5ubnJycnJydnZ2dnp6enp+fn5+goKCgoKChoaGhoaKioqKioqKioqKioqKioqKioqGhoaGhoaChoaCgR0VFREVFQ0VFRkVFRURERUVFRUVFRURERUVFRURFRUVEREVFRUVFRERERERERURERERERERERERERERERUVERUVERERFRURFRUVFRUVFRUVFRUVFRUVFRUZGRkZGRkZGRkZGRkZHR0dHR0dHR0dHR0dHSEhISEhISEhISEhISEhISElJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSElJSUhISEhISEdHR0dHRkZGRkZFRUVFRUVERERERENDQ0NDQkJCQkJBQUFAQEA/Pz8+Pj49PDw8Ozs6Ojk5ODg3NzY2NTQ0MzMyMjExMC8vLi4tLCsrKiopKCgnJiYlJCQjIyIhISAfHx4eHR0cGxsaGRkYGBcWFhUVFBQTExISERAQDw8ODg0NDAwLCwsKCgkJCAgHBwYGBgUFBAQDAwMCAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAgICAwMEBAQFBQYGBgcHCAgJCQoKCwsLDAwNDQ4ODg8PEBARERESEhMTFBQVFRYWFxcYGBkZGhobGxwcHR0eHh8fICAgISEiIiMjJCQkJSUmJicoKCkpKiopKioqKysrKywsLC0tLS0uLi4uLy8vLy8vMDAwMDAwMTExMTExMjIyMjIyMjIyMzMzMzMzMzMzMw==',
-};
+// Advanced notification sound generator using Web Audio API
+// Generates high-quality synthesized sounds instead of using base64 WAV files
 
-export type NotificationSoundType = keyof typeof notificationSounds;
+export type NotificationSoundType = 'chime' | 'bell' | 'ding' | 'alert';
 
 export const soundLabels: Record<NotificationSoundType, string> = {
   chime: 'Campanilla',
@@ -22,11 +10,195 @@ export const soundLabels: Record<NotificationSoundType, string> = {
   alert: 'Alerta',
 };
 
-export const playNotificationSound = (soundType: NotificationSoundType = 'chime', enabled: boolean = true, volume: number = 0.7): void => {
+/**
+ * Generates a pleasant chime sound using Web Audio API
+ */
+const generateChime = (context: AudioContext, volume: number): void => {
+  const now = context.currentTime;
+
+  // Create oscillators for a two-tone chime
+  const osc1 = context.createOscillator();
+  const osc2 = context.createOscillator();
+  const gainNode = context.createGain();
+
+  // Set frequencies (C5 and E5 for a pleasant interval)
+  osc1.frequency.setValueAtTime(523.25, now); // C5
+  osc2.frequency.setValueAtTime(659.25, now); // E5
+
+  // Use sine wave for smooth, pleasant tone
+  osc1.type = 'sine';
+  osc2.type = 'sine';
+
+  // Configure envelope (ADSR)
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(volume * 0.3, now + 0.01); // Attack
+  gainNode.gain.exponentialRampToValueAtTime(volume * 0.1, now + 0.3); // Decay
+  gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.6); // Release
+
+  // Connect nodes
+  osc1.connect(gainNode);
+  osc2.connect(gainNode);
+  gainNode.connect(context.destination);
+
+  // Start and stop
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + 0.7);
+  osc2.stop(now + 0.7);
+};
+
+/**
+ * Generates a bell sound
+ */
+const generateBell = (context: AudioContext, volume: number): void => {
+  const now = context.currentTime;
+
+  // Create multiple oscillators for rich bell tone
+  const fundamental = context.createOscillator();
+  const harmonic1 = context.createOscillator();
+  const harmonic2 = context.createOscillator();
+  const gainNode = context.createGain();
+
+  // Bell frequencies (fundamental + harmonics)
+  fundamental.frequency.setValueAtTime(440, now); // A4
+  harmonic1.frequency.setValueAtTime(880, now); // A5
+  harmonic2.frequency.setValueAtTime(1320, now); // E6
+
+  fundamental.type = 'sine';
+  harmonic1.type = 'sine';
+  harmonic2.type = 'sine';
+
+  // Bell envelope - sharp attack, long decay
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(volume * 0.5, now + 0.005);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+
+  // Create gain nodes for harmonics
+  const gain1 = context.createGain();
+  const gain2 = context.createGain();
+  gain1.gain.value = 0.3;
+  gain2.gain.value = 0.15;
+
+  // Connect
+  fundamental.connect(gainNode);
+  harmonic1.connect(gain1).connect(gainNode);
+  harmonic2.connect(gain2).connect(gainNode);
+  gainNode.connect(context.destination);
+
+  // Play
+  fundamental.start(now);
+  harmonic1.start(now);
+  harmonic2.start(now);
+  fundamental.stop(now + 1.3);
+  harmonic1.stop(now + 1.3);
+  harmonic2.stop(now + 1.3);
+};
+
+/**
+ * Generates a short, pleasant ding
+ */
+const generateDing = (context: AudioContext, volume: number): void => {
+  const now = context.currentTime;
+
+  const osc = context.createOscillator();
+  const gainNode = context.createGain();
+
+  // High, pleasant frequency
+  osc.frequency.setValueAtTime(1046.5, now); // C6
+  osc.type = 'sine';
+
+  // Short, crisp envelope
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(volume * 0.4, now + 0.005);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+  osc.connect(gainNode);
+  gainNode.connect(context.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.5);
+};
+
+/**
+ * Generates an alert sound (more urgent)
+ */
+const generateAlert = (context: AudioContext, volume: number): void => {
+  const now = context.currentTime;
+
+  // Create oscillators for urgent two-tone alert
+  const osc1 = context.createOscillator();
+  const osc2 = context.createOscillator();
+  const gainNode = context.createGain();
+
+  // Alternating frequencies for urgency
+  osc1.frequency.setValueAtTime(800, now);
+  osc1.frequency.setValueAtTime(600, now + 0.15);
+  osc1.frequency.setValueAtTime(800, now + 0.3);
+
+  osc2.frequency.setValueAtTime(600, now);
+  osc2.frequency.setValueAtTime(800, now + 0.15);
+  osc2.frequency.setValueAtTime(600, now + 0.3);
+
+  osc1.type = 'square';
+  osc2.type = 'square';
+
+  // Pulsing envelope
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(volume * 0.3, now + 0.01);
+  gainNode.gain.setValueAtTime(volume * 0.3, now + 0.14);
+  gainNode.gain.setValueAtTime(0, now + 0.15);
+  gainNode.gain.linearRampToValueAtTime(volume * 0.3, now + 0.16);
+  gainNode.gain.setValueAtTime(volume * 0.3, now + 0.29);
+  gainNode.gain.setValueAtTime(0, now + 0.3);
+  gainNode.gain.linearRampToValueAtTime(volume * 0.3, now + 0.31);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+
+  osc1.connect(gainNode);
+  osc2.connect(gainNode);
+  gainNode.connect(context.destination);
+
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + 0.6);
+  osc2.stop(now + 0.6);
+};
+
+/**
+ * Main function to play notification sounds
+ */
+export const playNotificationSound = (
+  soundType: NotificationSoundType = 'chime',
+  enabled: boolean = true,
+  volume: number = 0.7
+): void => {
   if (!enabled) return;
-  
-  const soundUrl = notificationSounds[soundType] || notificationSounds.chime;
-  const audio = new Audio(soundUrl);
-  audio.volume = Math.max(0, Math.min(1, volume));
-  audio.play().catch(e => console.log('Could not play notification sound:', e));
+
+  try {
+    // Create audio context
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    const context = new AudioContext();
+
+    // Normalize volume
+    const normalizedVolume = Math.max(0, Math.min(1, volume));
+
+    // Generate the appropriate sound
+    switch (soundType) {
+      case 'chime':
+        generateChime(context, normalizedVolume);
+        break;
+      case 'bell':
+        generateBell(context, normalizedVolume);
+        break;
+      case 'ding':
+        generateDing(context, normalizedVolume);
+        break;
+      case 'alert':
+        generateAlert(context, normalizedVolume);
+        break;
+      default:
+        generateChime(context, normalizedVolume);
+    }
+  } catch (e) {
+    console.warn('Could not play notification sound:', e);
+  }
 };

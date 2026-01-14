@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { LoadingLogo } from "@/components/ui/loading-logo";
 
 // Lazy load components for code splitting
 const Layout = lazy(() => import("./components/Layout"));
@@ -43,10 +44,7 @@ const queryClient = new QueryClient({
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-4">
-      <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-muted-foreground text-sm">Cargando...</p>
-    </div>
+    <LoadingLogo text="Cargando..." />
   </div>
 );
 
@@ -55,8 +53,8 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <OfflineIndicator />
       <BrowserRouter>
+        <OfflineIndicator />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes - no auth required */}

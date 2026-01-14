@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, DollarSign, TrendingDown, TrendingUp, Building2, Calendar, FileText, Search, Filter, Trash2, Camera, Loader2, Check, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -381,7 +382,15 @@ export default function Accounting() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredExpenses.length === 0 ? (
+                                {loadingExpenses ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-48">
+                                            <div className="flex items-center justify-center">
+                                                <LoadingLogo text="Cargando gastos..." size="sm" />
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredExpenses.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
                                             No hay gastos registrados en este mes.

@@ -33,6 +33,9 @@ export const useCreateSaleOffline = () => {
             const saleId = crypto.randomUUID();
             const localInvoiceNumber = await generateLocalInvoiceNumber(saleData.invoice_type_id);
 
+            // Obtener store_id local
+            const storeId = await getLocalStoreId();
+
             // Preparar la venta completa
             const completeSale = {
                 id: saleId,
@@ -50,6 +53,7 @@ export const useCreateSaleOffline = () => {
                 due_date: saleData.due_date || null,
                 created_at: new Date().toISOString(),
                 synced: false, // Marca para saber si se sincronizó
+                store_id: storeId, // Agregamos store_id
                 items: saleData.items, // Guardamos los items con la venta
             };
 
@@ -78,6 +82,9 @@ export const useCreateSaleOffline = () => {
                     completeSale.invoice_number = result.invoice_number;
                     completeSale.synced = true;
                     await offlineDB.put(OfflineStore.SALES, { ...completeSale, id: saleId });
+
+                    // IMPORTANTE: Mantener la secuencia local sincronizada
+                    await updateLocalSequenceFromOnlineSale(saleData.invoice_type_id, result.invoice_number);
 
                     console.log('✅ Venta sincronizada con Supabase:', result.invoice_number);
                     return result;
@@ -112,21 +119,34 @@ export const useCreateSaleOffline = () => {
 
 // Función para generar número de factura local (cuando estamos offline)
 async function generateLocalInvoiceNumber(invoiceTypeId: string): Promise<string> {
-    // Obtener las configuraciones guardadas localmente
-    const settings = await offlineDB.get<any>(OfflineStore.SETTINGS, 'invoice_sequences');
+    // 1. Obtener los tipos de factura cacheados para resolver UUID -> Code
+    let typeCode = invoiceTypeId;
 
-    // Si no hay configuración, usar un número temporal
-    if (!settings) {
-        const timestamp = Date.now();
-        return `OFFLINE-${timestamp}`;
+    // Si parece ser un UUID (longitud 36), buscar su código real
+    if (invoiceTypeId.length > 10) {
+        const cachedType = await offlineDB.get<any>(OfflineStore.INVOICE_TYPES, invoiceTypeId);
+        if (cachedType && cachedType.code) {
+            typeCode = cachedType.code;
+        }
     }
 
-    // Si tenemos la configuración, generar según el tipo
-    const typeCode = invoiceTypeId; // Aquí deberías tener el código del tipo
-    const sequence = settings[typeCode] || { current: 0, prefix: 'B' };
+    // 2. Obtener las configuraciones de secuencias guardadas localmente
+    const settings = await offlineDB.get<any>(OfflineStore.SETTINGS, 'invoice_sequences');
+
+    // Si no hay configuración, usar un número temporal pero intentando respetar el prefijo
+    if (!settings) {
+        const timestamp = Date.now();
+        return `${typeCode}-OFFLINE-${timestamp}`;
+    }
+
+    // 3. Generar número usando la secuencia correcta
+    // Usamos typeCode (ej: 'B02') para buscar en settings
+    const sequence = settings[typeCode] || { current: 0, prefix: `${typeCode}-` };
 
     sequence.current += 1;
     const formattedNumber = `${sequence.prefix}${String(sequence.current).padStart(8, '0')}`;
+
+    console.log(`🎫 Generando factura offline: Tipo=${typeCode} (#${sequence.current})`);
 
     // Guardar la secuencia actualizada
     await offlineDB.put(OfflineStore.SETTINGS, {
@@ -136,6 +156,45 @@ async function generateLocalInvoiceNumber(invoiceTypeId: string): Promise<string
     });
 
     return formattedNumber;
+}
+
+// Función auxiliar para actualizar la secuencia local desde una venta online exitosa
+async function updateLocalSequenceFromOnlineSale(invoiceTypeId: string, invoiceNumber: string) {
+    try {
+        const match = invoiceNumber.match(/-(\d+)$/);
+        if (!match || !match[1]) return;
+
+        const currentNumber = parseInt(match[1], 10);
+        const settings = await offlineDB.get<any>(OfflineStore.SETTINGS, 'invoice_sequences') || {};
+        const typeCode = invoiceTypeId;
+
+        // Solo actualizar si el número es mayor al que tenemos
+        const currentSequence = settings[typeCode] || { current: 0 };
+        if (currentNumber > (currentSequence.current || 0)) {
+            settings[typeCode] = {
+                current: currentNumber,
+                prefix: `${typeCode}-`
+            };
+
+            await offlineDB.put(OfflineStore.SETTINGS, {
+                key: 'invoice_sequences',
+                ...settings
+            });
+            console.log('🔄 Secuencia local actualizada desde venta online:', invoiceNumber);
+        }
+    } catch (e) {
+        console.error('Error actualizando secuencia local:', e);
+    }
+}
+
+// Función auxiliar para obtener el store_id localmente
+async function getLocalStoreId(): Promise<string | null> {
+    // Intentar obtenerlo del token de sesión almacenado o configuración
+    // Por simplicidad, intentamos obtener un perfil cacheado si existe, o usamos null
+    // y dejamos que el backend (o la sincronización) lo resuelva si es posible.
+    // Una mejor opción es guardar el store_id en 'settings' al loguearse.
+    const settings = await offlineDB.get<any>(OfflineStore.SETTINGS, 'user_profile');
+    return settings?.store_id || null;
 }
 
 // Función para guardar venta en Supabase (cuando hay conexión)

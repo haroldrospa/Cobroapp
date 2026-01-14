@@ -16,6 +16,7 @@ import {
   Settings,
   Menu
 } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,357 +62,144 @@ const Dashboard: React.FC = () => {
     };
   });
 
-  // Obtener ventas reales filtradas por fecha
-  const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['sales-dashboard', dateRange],
+  // 1. Obtener Métricas Generales (Rápido)
+  const { data: dashboardMetrics, isLoading: loadingMetrics } = useQuery({
+    queryKey: ['dashboard-metrics', dateRange],
     queryFn: async () => {
-      let query = supabase
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (!dateRange?.from || !dateRange?.to) return null;
 
-      if (dateRange?.from) {
-        query = query.gte('created_at', dateRange.from.toISOString());
+      const { data, error } = await supabase.rpc('get_dashboard_metrics', {
+        p_start_date: dateRange.from.toISOString(),
+        p_end_date: new Date(new Date(dateRange.to).setHours(23, 59, 59, 999)).toISOString()
+      });
+
+      if (error) {
+        console.error('Error fetching metrics:', error);
+        return null;
       }
-
-      if (dateRange?.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', toDate.toISOString());
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data || [];
-    },
+      return data as any;
+    }
   });
 
-  // Obtener productos reales
-  const { data: products = [], isLoading: loadingProducts } = useProducts();
-
-  // Obtener productos más vendidos con datos reales
-  const { data: topProductsData = [] } = useQuery({
+  // 2. Obtener Top Productos (Rápido)
+  const { data: topProducts = [] } = useQuery({
     queryKey: ['top-products', dateRange],
     queryFn: async () => {
-      let query = supabase
-        .from('sale_items')
-        .select(`
-          product_id,
-          quantity,
-          total,
-          products (name),
-          sales!inner (created_at)
-        `);
+      if (!dateRange?.from || !dateRange?.to) return [];
 
-      if (dateRange?.from) {
-        query = query.gte('sales.created_at', dateRange.from.toISOString());
-      }
-
-      if (dateRange?.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('sales.created_at', toDate.toISOString());
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc('get_top_products_stats', {
+        p_start_date: dateRange.from.toISOString(),
+        p_end_date: new Date(new Date(dateRange.to).setHours(23, 59, 59, 999)).toISOString(),
+        p_limit: 5
+      });
 
       if (error) throw error;
 
-      // Agrupar por producto y sumar cantidades y totales
-      const productMap = new Map<string, { name: string; quantity: number; sales: number }>();
-
-      data?.forEach(item => {
-        const productId = item.product_id;
-        const productName = (item.products as any)?.name || 'Producto desconocido';
-
-        if (productId) {
-          const existing = productMap.get(productId);
-          if (existing) {
-            existing.quantity += item.quantity;
-            existing.sales += Number(item.total);
-          } else {
-            productMap.set(productId, {
-              name: productName,
-              quantity: item.quantity,
-              sales: Number(item.total)
-            });
-          }
-        }
-      });
-
-      // Convertir a array y ordenar por ventas
-      return Array.from(productMap.values())
-        .sort((a, b) => b.sales - a.sales)
-        .slice(0, 5);
-    },
-  });
-
-  // Calcular estadísticas reales
-  const calculatedStats = useMemo(() => {
-    if (loadingSales || loadingProducts) {
-      return {
-        totalSales: 0,
-        todaySales: 0,
-        yesterdaySales: 0,
-        todayCount: 0,
-        avgTicket: 0,
-        activeProducts: 0,
-        newProducts: 0
-      };
+      return data?.map((item: any) => ({
+        name: item.product_name,
+        quantity: Number(item.quantity_sold),
+        sales: Number(item.total_sales)
+      })) || [];
     }
-
-    const totalSales = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
-    const totalCount = sales.length;
-    const avgTicket = totalCount > 0 ? totalSales / totalCount : 0;
-
-    // Dates setup
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Today's stats
-    const todaySalesData = sales.filter(sale => {
-      const saleDate = new Date(sale.created_at);
-      saleDate.setHours(0, 0, 0, 0);
-      return saleDate.getTime() === today.getTime();
-    });
-
-    const todaySales = todaySalesData.reduce((sum, sale) => sum + Number(sale.total), 0);
-    const todayCount = todaySalesData.length;
-
-    // Yesterday's stats for comparison
-    const yesterdaySales = sales
-      .filter(sale => {
-        const saleDate = new Date(sale.created_at);
-        saleDate.setHours(0, 0, 0, 0);
-        return saleDate.getTime() === yesterday.getTime();
-      })
-      .reduce((sum, sale) => sum + Number(sale.total), 0);
-
-    const activeProducts = products.filter(p => p.status === 'active').length;
-
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    const newProducts = products.filter(p => p.created_at && new Date(p.created_at) > oneMonthAgo).length;
-
-    return {
-      totalSales,
-      todaySales,
-      yesterdaySales,
-      todayCount,
-      avgTicket,
-      activeProducts,
-      newProducts
-    };
-  }, [sales, products, loadingSales, loadingProducts]);
-
-  // Calcular datos mensuales reales
-  const monthlySalesData = useMemo(() => {
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const colors = ['#0891b2', '#06b6d4', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#ec4899', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9'];
-
-    const monthlyData = monthNames.map((month, index) => ({
-      month,
-      sales: 0,
-      color: colors[index]
-    }));
-
-    sales.forEach(sale => {
-      const saleDate = new Date(sale.created_at);
-      const monthIndex = saleDate.getMonth();
-      monthlyData[monthIndex].sales += Number(sale.total);
-    });
-
-    return monthlyData;
-  }, [sales]);
-
-  // Calcular mejor mes
-  const bestMonth = useMemo(() => {
-    if (!monthlySalesData.length) return { name: 'N/A', sales: 0 };
-
-    const best = monthlySalesData.reduce((max, month) =>
-      month.sales > max.sales ? month : max
-    );
-
-    return { name: best.month.toUpperCase(), sales: best.sales };
-  }, [monthlySalesData]);
-
-  // Obtener ventas por hora (datos reales)
-  const { data: hourlySalesData = [] } = useQuery({
-    queryKey: ['hourly-sales', dateRange],
-    queryFn: async () => {
-      let query = supabase
-        .from('sales')
-        .select('created_at, total');
-
-      if (dateRange?.from) {
-        query = query.gte('created_at', dateRange.from.toISOString());
-      }
-
-      if (dateRange?.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', toDate.toISOString());
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Agrupar por hora
-      const hourlyMap = new Map<number, { ventas: number; cantidad: number }>();
-
-      // Inicializar todas las horas de 6AM a 10PM
-      for (let i = 6; i <= 22; i++) {
-        hourlyMap.set(i, { ventas: 0, cantidad: 0 });
-      }
-
-      data?.forEach(sale => {
-        const saleDate = new Date(sale.created_at);
-        const hour = saleDate.getHours();
-
-        const existing = hourlyMap.get(hour);
-        if (existing) {
-          existing.ventas += Number(sale.total);
-          existing.cantidad += 1;
-        }
-      });
-
-      // Convertir a array con formato de hora
-      return Array.from(hourlyMap.entries())
-        .map(([hour, data]) => ({
-          hora: hour < 12 ? `${hour}AM` : hour === 12 ? '12PM' : `${hour - 12}PM`,
-          ventas: data.ventas,
-          cantidad: data.cantidad
-        }))
-        .filter(item => item.ventas > 0 || item.cantidad > 0);
-    },
   });
 
-  // Usar datos reales de topProductsData
-  const topProducts = topProductsData;
-
-  // Obtener datos de ventas por categoría (datos reales)
+  // 3. Obtener Ventas por Categoría (Rápido)
   const { data: categoryData = [] } = useQuery({
     queryKey: ['category-sales', dateRange],
     queryFn: async () => {
-      let query = supabase
-        .from('sale_items')
-        .select(`
-          total,
-          products!inner (
-            category_id,
-            categories (name)
-          ),
-          sales!inner (created_at)
-        `);
+      if (!dateRange?.from || !dateRange?.to) return [];
 
-      if (dateRange?.from) {
-        query = query.gte('sales.created_at', dateRange.from.toISOString());
-      }
-
-      if (dateRange?.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('sales.created_at', toDate.toISOString());
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc('get_sales_by_category_stats', {
+        p_start_date: dateRange.from.toISOString(),
+        p_end_date: new Date(new Date(dateRange.to).setHours(23, 59, 59, 999)).toISOString()
+      });
 
       if (error) throw error;
 
-      // Agrupar por categoría
       const colors = ['#0891b2', '#06b6d4', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#ec4899', '#a855f7'];
-      const categoryMap = new Map<string, { name: string; value: number }>();
 
-      data?.forEach(item => {
-        const product = item.products as any;
-        const categoryName = product?.categories?.name || 'Sin categoría';
-
-        const existing = categoryMap.get(categoryName);
-        if (existing) {
-          existing.value += Number(item.total);
-        } else {
-          categoryMap.set(categoryName, {
-            name: categoryName,
-            value: Number(item.total)
-          });
-        }
-      });
-
-      // Convertir a array, ordenar y agregar colores
-      return Array.from(categoryMap.values())
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 7)
-        .map((item, index) => ({
-          ...item,
-          color: colors[index % colors.length]
-        }));
-    },
+      return data?.map((item: any, index: number) => ({
+        name: item.category_name || 'Sin categoría',
+        value: Number(item.total_sales),
+        color: colors[index % colors.length]
+      })) || [];
+    }
   });
 
-  // Obtener clientes top (datos reales)
-  const { data: topClients = [] } = useQuery({
-    queryKey: ['top-clients', dateRange],
+  // 4. Obtener Ventas Mensuales (Rápido)
+  const { data: monthlySalesData = [] } = useQuery({
+    queryKey: ['monthly-sales', new Date().getFullYear()],
     queryFn: async () => {
-      let query = supabase
-        .from('sales')
-        .select(`
-          customer_id,
-          total,
-          customers (name)
-        `);
-
-      if (dateRange?.from) {
-        query = query.gte('created_at', dateRange.from.toISOString());
-      }
-
-      if (dateRange?.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', toDate.toISOString());
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc('get_monthly_sales_stats', {
+        p_year: new Date().getFullYear()
+      });
 
       if (error) throw error;
 
-      // Agrupar por cliente
-      const clientMap = new Map<string, { name: string; sales: number }>();
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const colors = ['#0891b2', '#06b6d4', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#ec4899', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9'];
 
-      data?.forEach(sale => {
-        const customerId = sale.customer_id || 'general';
-        const customerName = (sale.customers as any)?.name || 'Cliente General';
-
-        const existing = clientMap.get(customerId);
-        if (existing) {
-          existing.sales += Number(sale.total);
-        } else {
-          clientMap.set(customerId, {
-            name: customerName,
-            sales: Number(sale.total)
-          });
-        }
+      // Mapear resultados a la estructura completa de meses
+      return monthNames.map((month, index) => {
+        const found = data?.find((d: any) => d.month_index === index);
+        return {
+          month,
+          sales: found ? Number(found.total_sales) : 0,
+          color: colors[index]
+        };
       });
-
-      // Ordenar por ventas y tomar los top 5
-      return Array.from(clientMap.values())
-        .sort((a, b) => b.sales - a.sales)
-        .slice(0, 5);
-    },
+    }
   });
 
-  // Calcular alertas del sistema con datos reales
-  const lowStockProducts = useMemo(() => {
-    return products.filter(p => p.stock <= p.min_stock && p.status === 'active');
-  }, [products]);
+  // 5. Ventas por Hora (Rápido)
+  const { data: hourlySalesData = [] } = useQuery({
+    queryKey: ['hourly-sales', dateRange],
+    queryFn: async () => {
+      if (!dateRange?.from || !dateRange?.to) return [];
 
-  // Clientes con crédito vencido (ventas pendientes con due_date pasada)
+      const { data, error } = await supabase.rpc('get_hourly_sales_stats', {
+        p_start_date: dateRange.from.toISOString(),
+        p_end_date: new Date(new Date(dateRange.to).setHours(23, 59, 59, 999)).toISOString()
+      });
+
+      if (error) throw error;
+
+      // Rellenar horas vacías visualmente si se desea, o solo mostrar las que tienen ventas
+      // Aquí devolvemos el formato esperado por el gráfico
+      return data?.map((d: any) => ({
+        hora: d.hour < 12 ? `${d.hour}AM` : d.hour === 12 ? '12PM' : `${d.hour - 12}PM`,
+        ventas: Number(d.total_sales),
+        cantidad: Number(d.usage_count)
+      })) || [];
+    }
+  });
+
+  // 6. Productos con Stock Bajo (RPC)
+  const { data: lowStockProducts = [] } = useQuery({
+    queryKey: ['low-stock-products'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_low_stock_products_list');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // 7. Clientes con crédito alto (RPC)
+  const { data: highCreditCustomers = [] } = useQuery({
+    queryKey: ['high-credit-customers'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_high_credit_customers_list');
+      if (error) throw error;
+      return data?.map((c: any) => ({
+        ...c,
+        percentage: Number(c.usage_percentage)
+      })) || [];
+    }
+  });
+
+  // 8. Clientes con crédito vencido (Lista para tab alertas)
   const { data: overdueCustomers = [] } = useQuery({
-    queryKey: ['overdue-customers'],
+    queryKey: ['overdue-customers-list'],
     queryFn: async () => {
       const now = new Date().toISOString();
       const { data, error } = await supabase
@@ -438,7 +226,7 @@ const Dashboard: React.FC = () => {
     },
   });
 
-  // Secuencias de facturas próximas a agotarse
+  // 9. Secuencias de facturas (Alerta)
   const { data: invoiceSequences = [] } = useQuery({
     queryKey: ['invoice-sequences-alert'],
     queryFn: async () => {
@@ -448,63 +236,60 @@ const Dashboard: React.FC = () => {
 
       if (error) throw error;
 
-      // Calcular cuántos números quedan (asumiendo que el máximo es 99999999)
       const maxNumber = 99999999;
       return data?.map(seq => ({
         ...seq,
         remaining: maxNumber - seq.current_number
-      })).filter(seq => seq.remaining < 1000) || []; // Alertar si quedan menos de 1000
+      })).filter(seq => seq.remaining < 1000) || [];
     },
   });
 
-  // Clientes con crédito alto (uso >= 80% del límite)
-  const { data: highCreditCustomers = [] } = useQuery({
-    queryKey: ['high-credit-customers'],
+  // 10. Top Clientes (Para Tab Clientes)
+  const { data: topClients = [] } = useQuery({
+    queryKey: ['top-clients', dateRange],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, name, credit_limit, credit_used')
-        .gt('credit_limit', 0);
+      if (!dateRange?.from || !dateRange?.to) return [];
+
+      const { data, error } = await supabase.rpc('get_top_clients_stats', {
+        p_start_date: dateRange.from.toISOString(),
+        p_end_date: new Date(new Date(dateRange.to).setHours(23, 59, 59, 999)).toISOString(),
+        p_limit: 5
+      });
 
       if (error) throw error;
 
-      // Filtrar clientes con uso >= 80% del límite
-      return data?.filter(customer => {
-        const used = customer.credit_used || 0;
-        const limit = customer.credit_limit || 0;
-        return limit > 0 && (used / limit) >= 0.8;
-      }).map(customer => ({
-        ...customer,
-        percentage: Math.round(((customer.credit_used || 0) / (customer.credit_limit || 1)) * 100)
+      return data?.map((item: any) => ({
+        name: item.customer_name,
+        sales: Number(item.total_sales)
       })) || [];
-    },
+    }
   });
 
-  // Calculate trend for today vs yesterday
-  const salesTrend = calculatedStats.yesterdaySales > 0
-    ? ((calculatedStats.todaySales - calculatedStats.yesterdaySales) / calculatedStats.yesterdaySales) * 100
+  // Calcular tendencia
+  const salesTrend = dashboardMetrics?.yesterday_sales > 0
+    ? ((dashboardMetrics.today_sales - dashboardMetrics.yesterday_sales) / dashboardMetrics.yesterday_sales) * 100
     : 100;
 
   const stats = [
     {
       title: 'Ventas de Hoy',
-      value: `$${calculatedStats.todaySales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: `${calculatedStats.todayCount} ventas (${salesTrend.toFixed(1)}% vs ayer)`,
+      value: `$${(dashboardMetrics?.today_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: `${dashboardMetrics?.today_count || 0} ventas (${salesTrend.toFixed(1)}% vs ayer)`,
       icon: DollarSign,
       color: salesTrend >= 0 ? 'text-green-500' : 'text-red-500',
       bgColor: salesTrend >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
     },
     {
       title: 'Ventas Totales',
-      value: `$${calculatedStats.totalSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: `Ticket Prom: $${calculatedStats.avgTicket.toFixed(0)}`,
+      value: `$${(dashboardMetrics?.total_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: `Ticket Prom: $${(dashboardMetrics?.avg_ticket || 0).toFixed(0)}`,
       icon: BarChart3,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
     },
     {
       title: 'Cuentas por Cobrar',
-      value: overdueCustomers.length.toString(),
+      value: (dashboardMetrics?.overdue_count || 0).toString(),
       change: 'Clientes con Mora',
       icon: AlertCircle,
       color: 'text-red-500',
@@ -512,7 +297,7 @@ const Dashboard: React.FC = () => {
     },
     {
       title: 'Alertas de Stock',
-      value: lowStockProducts.length.toString(),
+      value: (dashboardMetrics?.low_stock || 0).toString(),
       change: 'Productos bajo mínimo',
       icon: Package,
       color: 'text-orange-500',
@@ -530,6 +315,14 @@ const Dashboard: React.FC = () => {
       color: "hsl(var(--muted-foreground))",
     },
   };
+
+  if (loadingMetrics) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center">
+        <LoadingLogo text="Analizando métricas..." size="md" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

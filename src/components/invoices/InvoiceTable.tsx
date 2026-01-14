@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Eye, Edit, Trash2, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { LoadingLogo } from '@/components/ui/loading-logo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -55,8 +56,7 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center p-8 h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-lg text-muted-foreground">Cargando facturas...</p>
+          <LoadingLogo text="Cargando facturas..." size="sm" />
         </CardContent>
       </Card>
     );

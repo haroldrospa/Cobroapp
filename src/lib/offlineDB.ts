@@ -14,6 +14,7 @@ export enum OfflineStore {
     CATEGORIES = 'categories',
     SETTINGS = 'settings',
     SYNC_QUEUE = 'sync_queue', // Cola de sincronización para operaciones pendientes
+    INVOICE_TYPES = 'invoice_types', // Cache de tipos de facturas
 }
 
 export interface SyncQueueItem {
@@ -22,7 +23,7 @@ export interface SyncQueueItem {
     operation: 'CREATE' | 'UPDATE' | 'DELETE';
     data: any;
     timestamp: number;
-    synced: boolean;
+    synced: number; // 0: false, 1: true - Changed to number for better IndexedDB support
     error?: string;
 }
 
@@ -31,7 +32,7 @@ class OfflineDatabase {
 
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            const request = indexedDB.open(DB_NAME, DB_VERSION + 1); // Increment version to force upgrade
 
             request.onerror = () => reject(request.error);
             request.onsuccess = () => {
@@ -69,6 +70,10 @@ class OfflineDatabase {
 
                 if (!db.objectStoreNames.contains(OfflineStore.SETTINGS)) {
                     db.createObjectStore(OfflineStore.SETTINGS, { keyPath: 'key' });
+                }
+
+                if (!db.objectStoreNames.contains(OfflineStore.INVOICE_TYPES)) {
+                    db.createObjectStore(OfflineStore.INVOICE_TYPES, { keyPath: 'id' });
                 }
 
                 if (!db.objectStoreNames.contains(OfflineStore.SYNC_QUEUE)) {
@@ -186,19 +191,37 @@ class OfflineDatabase {
         const queueItem: Omit<SyncQueueItem, 'id'> = {
             ...item,
             timestamp: Date.now(),
-            synced: false,
+            synced: 0,
         };
         await this.add(OfflineStore.SYNC_QUEUE, queueItem);
     }
 
     async getPendingSyncItems(): Promise<SyncQueueItem[]> {
-        return this.getByIndex<SyncQueueItem>(OfflineStore.SYNC_QUEUE, 'synced', false);
+        // Fallback to getAll and filter manually to avoid "DataError: The parameter is not a valid key"
+        // when querying boolean indices on some browsers, and to handle legacy 'false' vs new '0' values.
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction([OfflineStore.SYNC_QUEUE], 'readonly');
+            const store = transaction.objectStore(OfflineStore.SYNC_QUEUE);
+            // We get ALL items and filter in memory. The queue should be relatively small.
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const allItems = request.result as SyncQueueItem[];
+                // Filter items where synced is false (legacy) or 0 (new)
+                // Use strict check against 1 to identify synced, everything else is pending
+                const pending = allItems.filter(item => item.synced !== 1 && item.synced !== true as any);
+                resolve(pending);
+            };
+            request.onerror = () => reject(request.error);
+        });
     }
 
     async markAsSynced(id: string | number): Promise<void> {
         const item = await this.get<SyncQueueItem>(OfflineStore.SYNC_QUEUE, id);
         if (item) {
-            item.synced = true;
+            item.synced = 1;
             await this.put(OfflineStore.SYNC_QUEUE, item);
         }
     }
@@ -219,7 +242,7 @@ class OfflineDatabase {
         const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
 
         for (const item of allItems) {
-            if (item.synced && item.timestamp < sevenDaysAgo && item.id) {
+            if ((item.synced === 1 || item.synced === true as any) && item.timestamp < sevenDaysAgo && item.id) {
                 await this.delete(OfflineStore.SYNC_QUEUE, item.id);
             }
         }

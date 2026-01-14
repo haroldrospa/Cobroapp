@@ -55,8 +55,10 @@ class OfflineSyncManager {
         console.log('⏹️ Offline Sync Manager detenido');
     }
 
-    private handleOnline() {
+    private async handleOnline() {
         console.log('✅ Conexión restaurada - iniciando sincronización');
+        // Intentar arreglar secuencias inmediatamente al conectar
+        await this.reconcileSequences();
         this.sync();
     }
 
@@ -74,13 +76,18 @@ class OfflineSyncManager {
         console.log('🔄 Iniciando sincronización...');
 
         try {
-            // 1. Sincronizar datos desde Supabase a IndexedDB
-            await this.syncFromSupabase();
-
-            // 2. Sincronizar cola de operaciones pendientes hacia Supabase
+            // 1. Sincronizar datos (PRIMERO SUBIR CAMBIOS LOCALES)
+            // Esto es crucial para que las secuencias locales avanzadas se guarden en el servidor
+            // antes de descargar los valores del servidor (que podrían ser más viejos si no subimos primero).
             await this.syncToSupabase();
 
-            // 3. Limpiar items antiguos
+            // 2. Sincronizar datos desde Supabase a IndexedDB (DESCARGAR CAMBIOS)
+            await this.syncFromSupabase();
+
+            // 3. Sincronizar (Reconciliar) Secuencias - CRÍTICO para evitar duplicados
+            await this.reconcileSequences();
+
+            // 4. Limpiar items antiguos
             await offlineDB.cleanOldSyncedItems();
 
             console.log('✅ Sincronización completada');
@@ -88,6 +95,92 @@ class OfflineSyncManager {
             console.error('❌ Error en sincronización:', error);
         } finally {
             this.isSyncing = false;
+        }
+    }
+
+    // RECONCILIADOR DE SECUENCIAS (Bidireccional)
+    // Asegura que Online y Offline estén siempre en el número más alto
+    private async reconcileSequences(): Promise<void> {
+        try {
+            console.log('⚖️ Reconciliando secuencias...');
+
+            // 1. Obtener usuario y tienda
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('store_id')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (!profile?.store_id) return;
+
+            // 2. Obtener secuencias Locales
+            const localSettings = await offlineDB.get<any>(OfflineStore.SETTINGS, 'invoice_sequences') || {};
+
+            // 3. Obtener secuencias Remotas
+            const { data: remoteSequences } = await supabase
+                .from('invoice_sequences')
+                .select('*')
+                .eq('store_id', profile.store_id);
+
+            if (!remoteSequences) return;
+
+            let updatesMade = false;
+
+            // 4. Comparar y corregir
+            for (const remote of remoteSequences) {
+                const typeCode = remote.invoice_type_id;
+                const localSeq = localSettings[typeCode];
+
+                // Caso A: Local está más adelantado (Offline avanzó más)
+                if (localSeq && localSeq.current > remote.current_number) {
+                    console.log(`⚡️ CORRIGIENDO REMOTO: ${typeCode} Local(${localSeq.current}) > Remoto(${remote.current_number})`);
+
+                    // Actualizar Supabase directamente
+                    const { error } = await supabase
+                        .from('invoice_sequences')
+                        .update({
+                            current_number: localSeq.current,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', remote.id);
+
+                    if (error) {
+                        console.error('Error actualizando secuencia remota:', error);
+                        // Fallback a RPC si el update directo falla
+                        await supabase.rpc('update_invoice_sequence_max' as any, {
+                            p_invoice_type_id: typeCode,
+                            p_store_id: profile.store_id,
+                            p_new_sequence_number: localSeq.current
+                        });
+                    }
+                    updatesMade = true;
+                }
+                // Caso B: Remoto está más adelantado (Hubo ventas en otro PC)
+                else if (localSeq && remote.current_number > localSeq.current) {
+                    console.log(`⚡️ CORRIGIENDO LOCAL: ${typeCode} Remoto(${remote.current_number}) > Local(${localSeq.current})`);
+
+                    localSettings[typeCode] = {
+                        current: remote.current_number,
+                        prefix: `${typeCode}-`
+                    };
+                    updatesMade = true;
+                }
+            }
+
+            // Guardar cambios locales si hubo correcciones
+            if (updatesMade) {
+                await offlineDB.put(OfflineStore.SETTINGS, {
+                    key: 'invoice_sequences',
+                    ...localSettings
+                });
+                console.log('✅ Secuencias sincronizadas y corregidas');
+            }
+
+        } catch (error) {
+            console.error('⚠️ Error en reconciliación de secuencias:', error);
         }
     }
 
@@ -101,11 +194,20 @@ class OfflineSyncManager {
             // Obtener store_id del usuario
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('store_id')
+                .select('store_id, is_active')
                 .eq('id', user.id)
                 .maybeSingle();
 
             const storeId = profile?.store_id;
+
+            // Guardar perfil en offline DB para tener el store_id disponible offline
+            if (profile) {
+                await offlineDB.put(OfflineStore.SETTINGS, {
+                    key: 'user_profile',
+                    store_id: profile.store_id,
+                    is_active: profile.is_active
+                });
+            }
 
             // Sincronizar productos
             let productsQuery = supabase
@@ -161,6 +263,43 @@ class OfflineSyncManager {
                 console.log(`👥 ${customers.length} clientes sincronizados`);
             }
 
+            // Sincronizar tipos de facturas (cache)
+            const { data: invoiceTypes, error: typesError } = await supabase
+                .from('invoice_types')
+                .select('*');
+
+            if (!typesError && invoiceTypes) {
+                for (const type of invoiceTypes) {
+                    await offlineDB.put(OfflineStore.INVOICE_TYPES, type);
+                }
+                console.log(`📄 ${invoiceTypes.length} tipos de facturas sincronizados`);
+            }
+
+            // Sincronizar secuencias de facturas
+            let sequencesQuery = supabase
+                .from('invoice_sequences')
+                .select('invoice_type_id, current_number');
+
+            if (storeId) {
+                sequencesQuery = sequencesQuery.eq('store_id', storeId);
+            }
+
+            const { data: sequences, error: sequencesError } = await sequencesQuery;
+
+            if (!sequencesError && sequences) {
+                const sequenceMap: any = { key: 'invoice_sequences' };
+
+                for (const seq of sequences) {
+                    sequenceMap[seq.invoice_type_id] = {
+                        current: seq.current_number,
+                        prefix: `${seq.invoice_type_id}-`
+                    };
+                }
+
+                await offlineDB.put(OfflineStore.SETTINGS, sequenceMap);
+                console.log(`🔢 ${sequences.length} secuencias sincronizadas`);
+            }
+
         } catch (error) {
             console.error('Error sincronizando desde Supabase:', error);
             throw error;
@@ -214,11 +353,61 @@ class OfflineSyncManager {
     // Sincronizar venta
     private async syncSale(operation: string, data: any): Promise<void> {
         if (operation === 'CREATE') {
+            // CRÍTICO: Asegurar que existe store_id. Las ventas offline antiguas podrían no tenerlo.
+            if (!data.store_id) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('store_id')
+                        .eq('id', user.id)
+                        .maybeSingle();
+
+                    if (profile?.store_id) {
+                        data.store_id = profile.store_id;
+                        console.log('🔧 store_id parcheado para venta offline:', data.id);
+                    }
+                }
+            }
+
+            // Si aún no tenemos store_id, intentamos con el de la sesión actual como última opción
+            // o insertamos y dejamos que falle si es obligatorio (mejor que fallar silenciosamente aquí)
+
             const { error } = await supabase
                 .from('sales')
                 .insert(data);
 
-            if (error) throw error;
+            if (error) {
+                // Si es error de duplicado (ya existe la factura), lo ignoramos y marcamos como synced
+                if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+                    console.warn(`⚠️ Venta ${data.invoice_number} ya existía en servidor. Ignorando error.`);
+                    return;
+                }
+                throw error;
+            }
+
+            // CRÍTICO: Si la venta se insertó correctamente, debemos intentar actualizar la secuencia
+            // para que la próxima venta online no reutilice este número.
+            if (data.invoice_number && data.store_id && data.invoice_type_id) {
+                try {
+                    // Extraer número de la factura (ej: B02-00001739 -> 1739)
+                    const match = data.invoice_number.match(/-(\d+)$/);
+                    if (match && match[1]) {
+                        const sequenceNumber = parseInt(match[1], 10);
+
+                        await supabase.rpc('update_invoice_sequence_max' as any, {
+                            p_invoice_type_id: data.invoice_type_id,
+                            p_store_id: data.store_id,
+                            p_new_sequence_number: sequenceNumber
+                        });
+
+                        console.log(`🔢 Secuencia actualizada a ${sequenceNumber} para ${data.invoice_type_id}`);
+                    }
+                } catch (seqError) {
+                    console.error('⚠️ Error actualizando secuencia post-sync (no crítico):', seqError);
+                    // No lanzamos el error porque la venta sí se guardó
+                }
+            }
 
             // También sincronizar items de venta si existen
             if (data.items && Array.isArray(data.items)) {
